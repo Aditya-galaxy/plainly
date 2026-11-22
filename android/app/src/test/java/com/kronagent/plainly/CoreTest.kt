@@ -81,3 +81,20 @@ class PhotoTest {
         assertEquals(Meta(52, "female", "18 Nov 2026"), parseMeta(rows))
     }
 }
+
+class PhoneOcrTest {
+    /** What ML Kit on a Redmi Note 11T 5G actually produced for the sample photo, pasted from the app. */
+    @Test fun redmiOcrOfTheSamplePhoto() {
+        val lines = javaClass.classLoader!!.getResource("redmi-mlkit-rows.txt")!!.readText().lines()
+        val rows = parseRows(lines)
+        val by = rows.associateBy { it.name }
+        assertEquals(rows.joinToString("\n") { "${it.name} ${it.value} ${it.unit} ${it.range.text}" }, 15, rows.size) // Free T4's value was lost by the OCR
+        assertEquals(10, rows.count { flagOf(it.value, it.range) == Flag.HIGH || flagOf(it.value, it.range) == Flag.LOW })
+        assertEquals(200.0, by["Cholesterol, Total"]!!.range.high)
+        assertEquals(100.0, by["LDL Cholesterol"]!!.range.high)
+        assertEquals(6.8, by["TSH (Thyroid Stimulating Hormone)"]!!.value, 1e-9)
+        assertEquals(listOf("g/dL", "mg/dL", "ng/mL", "mg/dL", "U/L", "x10^3/uL", "uIU/mL"),
+            listOf("Haemoglobin", "Glucose, Fasting", "Vitamin D, 25-Hydroxy", "Creatinine", "ALT (SGPT)", "Total Leucocyte Count", "TSH (Thyroid Stimulating Hormone)").map { by[it]!!.unit })
+        assertEquals(Meta(52, "female", "18 Nov 2026"), parseMeta(lines))
+    }
+}

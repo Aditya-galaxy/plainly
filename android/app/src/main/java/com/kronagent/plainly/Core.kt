@@ -73,20 +73,58 @@ data class Meta(val age: Int? = null, val sex: String? = null, val date: String?
 
 fun parseMeta(lines: List<String>): Meta {
     val text = lines.joinToString("\n")
-    val asx = Regex("Age\\s*/\\s*Sex\\s*:?\\s*(\\d{1,3})\\s*(?:Y|Yrs?|Years?)?\\s*/\\s*(Male|Female|M|F)\\b", RegexOption.IGNORE_CASE).find(text)
+    // OCR often reads the "/" between age and sex as "I", "l" or "|".
+    val asx = Regex("Age\\s*[/Il|]\\s*Sex\\s*:?\\s*(\\d{1,3})\\s*(?:Y|Yrs?|Years?)?\\s*[/Il|]\\s*(Male|Female|M|F)\\b", RegexOption.IGNORE_CASE).find(text)
     val age = asx?.groupValues?.get(1)?.toIntOrNull()
     val sex = asx?.groupValues?.get(2)?.let { if (it.startsWith("f", true)) "female" else "male" }
     val date = Regex("(?:Collected|Collection|Date)\\s*:?\\s*(\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{4})", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)
     return Meta(age, sex, date)
 }
 
+/** Units labs actually print. OCR misreads "/" as "l", "i" or "1" ("gldL", "ngimL"), so a printed unit is snapped to
+ *  the nearest of these when it is at most two characters away. Same list as the web app. */
+private val UNITS = listOf("g/dL", "mg/dL", "ng/mL", "pg/mL", "ng/dL", "uIU/mL", "mIU/L", "U/L", "IU/L", "fL", "pg", "%", "x10^3/uL", "x10^6/uL",
+    "mmol/L", "umol/L", "mEq/L", "g/L", "mm/hr", "ratio")
+
+private fun edits(a: String, b: String): Int {
+    val d = Array(a.length + 1) { i -> IntArray(b.length + 1) { j -> if (i == 0) j else if (j == 0) i else 0 } }
+    for (i in 1..a.length) for (j in 1..b.length)
+        d[i][j] = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+    return d[a.length][b.length]
+}
+
+fun canonicalUnit(u: String): String {
+    val t = u.trim().removeSuffix(".")
+    if (t.isEmpty()) return ""
+    var best = t; var bestD = 3
+    for (c in UNITS) { val d = edits(t.lowercase(), c.lowercase()); if (d < bestD) { best = c; bestD = d } }
+    return if (bestD <= 2 && (bestD == 0 || t.length >= 2)) best else t
+}
+
+/** "6,80" → "6.80" (a comma read for a decimal point); "1,200" (thousands) is left alone. */
+private fun decimalComma(s: String) = s.replace(Regex("(\\d),(\\d{1,2})(?!\\d)"), "$1.$2")
+
 fun parseRows(lines: List<String>): List<LabTest> = lines.mapNotNull { line ->
-    val l = line.replace(Regex("\\s+"), " ").trim()
+    val l = decimalComma(line.replace(Regex("\\s+"), " ").trim())
     if (l.isEmpty() || SKIP.containsMatchIn(l)) return@mapNotNull null
     val m = ROW.find(l) ?: return@mapNotNull null
-    val range = parseRange(m.groupValues[5])
-    if (range.low == null && range.high == null) return@mapNotNull null
-    LabTest(m.groupValues[1].trim(), m.groupValues[2].toDouble(), m.groupValues[4], range, m.groupValues[2], true) // empty unit if OCR dropped it
+    val value = m.groupValues[2].toDouble()
+    var range = parseRange(m.groupValues[5])
+    if (range.low == null && range.high == null) {
+        // A "< 200" can lose its "<" in a photo, leaving one number; the lab's own H/L mark says which side it is.
+        val lone = Regex("^(\\d+(?:\\.\\d+)?)$").find(m.groupValues[5].trim())?.groupValues?.get(1)?.toDouble()
+        range = when {
+            lone != null && m.groupValues[3] == "H" && value > lone -> Range(high = lone, text = "< ${fmt(lone)}")
+            lone != null && m.groupValues[3] == "L" && value < lone -> Range(low = lone, text = "> ${fmt(lone)}")
+            else -> return@mapNotNull null
+        }
+    }
+    // Sanity: a broken OCR line can look like a row ("ng/dL 0 80-1.80"). A test name is never a unit, and a range's
+    // low end is never above its high end; such rows are dropped rather than shown to a patient.
+    val name = m.groupValues[1].trim()
+    if (canonicalUnit(name) in UNITS || name.count { it.isLetter() } < 2) return@mapNotNull null
+    if (range.low != null && range.high != null && range.low > range.high) return@mapNotNull null
+    LabTest(name, value, canonicalUnit(m.groupValues[4]), range, m.groupValues[2], true)
 }
 
 /** A model reading report text can misread a number; each value must appear in the OCR text as printed. */

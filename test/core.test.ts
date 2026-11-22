@@ -83,3 +83,19 @@ test("rule-based reader handles the usual one-test-per-line layout", () => {
   assert.equal(rows[3].range.low, 50);
   assert.deepEqual(parseMeta(lines), { age: 52, sex: "female", date: "18 Nov 2026" });
 });
+
+import { readFileSync } from "node:fs";
+test("phone OCR of the sample photo (ML Kit on a Redmi): misread units, a lost '<', a decimal comma", () => {
+  const lines = readFileSync(new URL("./redmi-mlkit-rows.txt", import.meta.url), "utf8").split("\n");
+  const rows = parseRows(lines);
+  const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+  // Free T4's value was lost by the OCR (it landed on no row), so 15 of the 16 can be read.
+  assert.equal(rows.length, 15);
+  assert.equal(rows.filter((r) => flagOf(r.value, r.range) === "high" || flagOf(r.value, r.range) === "low").length, 10);
+  assert.equal(by["Cholesterol, Total"].range.high, 200);
+  assert.equal(by["LDL Cholesterol"].range.high, 100);
+  assert.equal(by["TSH (Thyroid Stimulating Hormone)"].value, 6.8);
+  assert.deepEqual(["Haemoglobin", "Glucose, Fasting", "Vitamin D, 25-Hydroxy", "Creatinine", "ALT (SGPT)", "Total Leucocyte Count", "TSH (Thyroid Stimulating Hormone)"].map((n) => by[n].unit),
+    ["g/dL", "mg/dL", "ng/mL", "mg/dL", "U/L", "x10^3/uL", "uIU/mL"]);
+  assert.deepEqual(parseMeta(lines), { age: 52, sex: "female", date: "18 Nov 2026" });
+});
