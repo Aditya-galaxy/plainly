@@ -6,7 +6,9 @@ import { parseRange, type Test } from "./ranges.ts";
  * device; Gemini Nano is used for photos and for layouts these rules don't recognise.
  */
 
-const ROW = /^(?<name>[A-Za-z][A-Za-z0-9 ,()/.'+\-]*?[A-Za-z0-9)])\s+(?<value>-?\d+(?:\.\d+)?)\s*(?:(?<flag>[HL])\b)?\s+(?<unit>[A-Za-zµ%^/\d.]+(?:\/[A-Za-z0-9.]+)?)\s+(?<range>.*\d.*)$/;
+// The unit is optional (OCR sometimes drops a short unit like "fL" or "%"), but must contain a letter or % so a
+// range's first number is never mistaken for it.
+const ROW = /^(?<name>[A-Za-z][A-Za-z0-9 ,()/.'+\-]*?[A-Za-z0-9)])\s+(?<value>-?\d+(?:\.\d+)?)\s*(?:(?<flag>[HL])\b)?(?:\s+(?<unit>(?=\S*[A-Za-zµ%])[A-Za-zµ%^/\d.]+(?:\/[A-Za-z0-9.]+)?))?\s+(?<range>.*\d.*)$/;
 const SKIP = /^(test|result|unit|biological|reference|report|collected|reported|patient|age|sample|phone|ref\.?\s*by|checked|results relate)/i;
 
 export type Meta = { age?: number; sex?: "female" | "male"; date?: string };
@@ -30,7 +32,7 @@ export function parseRows(lines: string[]): Test[] {
     if (!m?.groups) continue;
     const range = parseRange(m.groups.range);
     if (range.low === undefined && range.high === undefined) continue;
-    out.push({ name: m.groups.name.trim(), value: Number(m.groups.value), unit: m.groups.unit, range, raw: m.groups.value, verified: true });
+    out.push({ name: m.groups.name.trim(), value: Number(m.groups.value), unit: m.groups.unit ?? "", range, raw: m.groups.value, verified: true });
   }
   return out;
 }

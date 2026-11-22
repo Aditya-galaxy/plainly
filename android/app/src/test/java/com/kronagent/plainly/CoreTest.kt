@@ -57,3 +57,27 @@ class CoreTest {
         assertFalse(j.getString("test").contains("•"))
     }
 }
+
+class PhotoTest {
+    /** Real OCR output (Apple Vision, same line-and-corners shape as ML Kit) for the tilted sample photo. */
+    private fun fixture(): List<OcrLine> {
+        val text = javaClass.classLoader!!.getResource("sample-photo-ocr.json")!!.readText()
+        val lines = org.json.JSONObject(text).getJSONArray("lines")
+        return (0 until lines.length()).map { i ->
+            val o = lines.getJSONObject(i)
+            val c = o.getJSONArray("corners")
+            OcrLine(o.getString("text"), (0 until 4).map { j -> c.getJSONArray(j).getDouble(0) to c.getJSONArray(j).getDouble(1) })
+        }
+    }
+
+    @Test fun tiltedSamplePhotoReadsAllSixteenTests() {
+        val rows = rowsFromLines(fixture())
+        val tests = parseRows(rows)
+        val got = tests.associate { it.name to it.value }
+        assertEquals(rows.joinToString("\n"), 16, tests.size)
+        assertEquals(10.9, got["Haemoglobin"]); assertEquals(6.1, got["HbA1c (Glycated Haemoglobin)"]); assertEquals(6.8, got["TSH (Thyroid Stimulating Hormone)"])
+        assertEquals(0.92, got["Free T4"]); assertEquals(14.2, got["Vitamin D, 25-Hydroxy"]); assertEquals(28.0, got["ALT (SGPT)"])
+        assertEquals(10, tests.count { flagOf(it.value, it.range) == Flag.HIGH || flagOf(it.value, it.range) == Flag.LOW })
+        assertEquals(Meta(52, "female", "18 Nov 2026"), parseMeta(rows))
+    }
+}

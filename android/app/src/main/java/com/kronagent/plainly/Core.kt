@@ -54,7 +54,8 @@ private fun key(name: String) = name.lowercase().replace(Regex("\\(.*?\\)"), "")
 
 fun trendOf(t: LabTest, earlier: List<List<LabTest>>): Trend? {
     for (report in earlier) {
-        val p = report.firstOrNull { key(it.name) == key(t.name) && it.unit.equals(t.unit, ignoreCase = true) } ?: continue
+        // Units must match, unless OCR dropped one of them; then the test name alone decides.
+        val p = report.firstOrNull { key(it.name) == key(t.name) && (it.unit.isEmpty() || t.unit.isEmpty() || it.unit.equals(t.unit, ignoreCase = true)) } ?: continue
         val change = t.value - p.value
         val same = abs(change) <= abs(p.value) * 0.02
         return Trend(p.value, change, if (same) "same" else if (change > 0) "up" else "down")
@@ -63,7 +64,9 @@ fun trendOf(t: LabTest, earlier: List<List<LabTest>>): Trend? {
 }
 
 // ── reading report text: one test per line, "Name  Value [H|L]  Unit  Reference interval" ──
-private val ROW = Regex("^([A-Za-z][A-Za-z0-9 ,()/.'+\\-]*?[A-Za-z0-9)])\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:([HL])\\b)?\\s+([A-Za-zµ%^/\\d.]+(?:/[A-Za-z0-9.]+)?)\\s+(.*\\d.*)$")
+// The unit is optional (OCR sometimes drops a short unit like "fL" or "%"), but must contain a letter or % so a
+// range's first number is never mistaken for it.
+private val ROW = Regex("^([A-Za-z][A-Za-z0-9 ,()/.'+\\-]*?[A-Za-z0-9)])\\s+(-?\\d+(?:\\.\\d+)?)\\s*(?:([HL])\\b)?(?:\\s+((?=[^\\s]*[A-Za-zµ%])[A-Za-zµ%^/\\d.]+(?:/[A-Za-z0-9.]+)?))?\\s+(.*\\d.*)$")
 private val SKIP = Regex("^(test|result|unit|biological|reference|report|collected|reported|patient|age|sample|phone|ref\\.?\\s*by|checked|results relate)", RegexOption.IGNORE_CASE)
 
 data class Meta(val age: Int? = null, val sex: String? = null, val date: String? = null)
@@ -83,7 +86,7 @@ fun parseRows(lines: List<String>): List<LabTest> = lines.mapNotNull { line ->
     val m = ROW.find(l) ?: return@mapNotNull null
     val range = parseRange(m.groupValues[5])
     if (range.low == null && range.high == null) return@mapNotNull null
-    LabTest(m.groupValues[1].trim(), m.groupValues[2].toDouble(), m.groupValues[4], range, m.groupValues[2], true)
+    LabTest(m.groupValues[1].trim(), m.groupValues[2].toDouble(), m.groupValues[4], range, m.groupValues[2], true) // empty unit if OCR dropped it
 }
 
 /** A model reading report text can misread a number; each value must appear in the OCR text as printed. */
@@ -143,4 +146,50 @@ fun checkExplanation(text: String, allowed: List<Double>): String? {
     if (stray != null) return "It mentioned a number that isn't on your report (${fmt(stray)})."
     if (!DOCTOR.containsMatchIn(t)) return "It didn't point you back to your doctor."
     return null
+}
+
+// ── rebuilding table rows from OCR lines ──
+/** One recognised line of text and its four corners (top-left, top-right, bottom-right, bottom-left), y pointing down. */
+data class OcrLine(val text: String, val corners: List<Pair<Double, Double>>)
+
+/**
+ * OCR returns each table column as separate lines, and photos are rarely straight: on a page tilted 2°, a row's cells
+ * drift by more than half a row height from left to right. Line boxes don't reliably carry the tilt (many OCR engines
+ * return axis-aligned boxes), so the tilt is found from the table itself: the page is levelled at each candidate slope
+ * within ±4.5° and the slope that rebuilds the most readable result rows wins.
+ */
+fun rowsFromLines(lines: List<OcrLine>): List<String> {
+    val usable = lines.filter { it.text.isNotBlank() && it.corners.size == 4 }
+    if (usable.isEmpty()) return emptyList()
+    val fromBoxes = usable.mapNotNull { l ->
+        val (x0, y0) = l.corners[0]; val (x1, y1) = l.corners[1]
+        if (x1 - x0 > 20) (y1 - y0) / (x1 - x0) else null
+    }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
+    val candidates = listOf(fromBoxes, 0.0) + (-45..45).map { it / 570.0 } // ~0.1° steps up to ±4.5°
+    var best = rowsAtSlope(usable, fromBoxes)
+    var bestScore = parseRows(best).size
+    for (c in candidates) {
+        val rows = rowsAtSlope(usable, c)
+        val score = parseRows(rows).size
+        if (score > bestScore) { best = rows; bestScore = score }
+    }
+    return best
+}
+
+/** Levels the page by [slope] (y grows by slope per pixel of x) and joins lines whose centres share a row. */
+fun rowsAtSlope(lines: List<OcrLine>, slope: Double): List<String> {
+    data class Item(val x: Double, val y: Double, val h: Double, val text: String)
+    val items = lines.map { l ->
+        val cx = l.corners.map { it.first }.average()
+        val cy = l.corners.map { it.second }.average()
+        val h = ((l.corners[3].second - l.corners[0].second) + (l.corners[2].second - l.corners[1].second)) / 2
+        Item(cx, cy - cx * slope, kotlin.math.abs(h), l.text.trim())
+    }.sortedBy { it.y }
+    val hMedian = items.map { it.h }.sorted()[items.size / 2].coerceAtLeast(4.0)
+    val rows = mutableListOf<MutableList<Item>>()
+    for (it in items) {
+        val row = rows.lastOrNull()
+        if (row != null && kotlin.math.abs(row.map { r -> r.y }.average() - it.y) < hMedian * 0.5) row += it else rows += mutableListOf(it)
+    }
+    return rows.map { r -> r.sortedBy { it.x }.joinToString(" ") { it.text } }
 }

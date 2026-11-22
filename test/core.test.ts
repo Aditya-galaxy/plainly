@@ -71,12 +71,13 @@ test("rule-based reader handles the usual one-test-per-line layout", () => {
     "Platelet Count 248 x10^3/uL 150 - 410",
     "Free T4 0.92 ng/dL 0.80 - 1.80",
     "Vitamin B12 212 pg/mL 200 - 900",
+    "MCV 76.2 L 83.0 - 101.0",
   ];
   const rows = parseRows(lines);
   assert.deepEqual(rows.map((r) => [r.name, r.value, r.unit]), [
     ["Haemoglobin", 10.9, "g/dL"], ["HbA1c (Glycated Haemoglobin)", 6.1, "%"], ["LDL Cholesterol", 148, "mg/dL"],
     ["HDL Cholesterol", 42, "mg/dL"], ["TSH (Thyroid Stimulating Hormone)", 6.8, "uIU/mL"], ["Platelet Count", 248, "x10^3/uL"],
-    ["Free T4", 0.92, "ng/dL"], ["Vitamin B12", 212, "pg/mL"],
+    ["Free T4", 0.92, "ng/dL"], ["Vitamin B12", 212, "pg/mL"], ["MCV", 76.2, ""],
   ]);
   assert.equal(rows[2].range.high, 100);
   assert.equal(rows[3].range.low, 50);

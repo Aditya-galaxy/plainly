@@ -59,7 +59,8 @@ export type Trend = { previous: number; change: number; direction: "up" | "down"
 /** The same test in an earlier report, matched by name and unit. */
 export function trendOf(t: Test, earlier: { date?: string; tests: Test[] }[]): Trend | undefined {
   for (const r of earlier) {
-    const p = r.tests.find((x) => key(x.name) === key(t.name) && x.unit.toLowerCase() === t.unit.toLowerCase());
+    // Units must match, unless OCR dropped one of them; then the test name alone decides.
+    const p = r.tests.find((x) => key(x.name) === key(t.name) && (!x.unit || !t.unit || x.unit.toLowerCase() === t.unit.toLowerCase()));
     if (p) {
       const change = t.value - p.value;
       const same = Math.abs(change) <= Math.abs(p.value) * 0.02;
