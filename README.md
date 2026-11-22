@@ -1,54 +1,128 @@
-# React + TypeScript + Vite
+# Plainly
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Your lab report, in plain words. Read on your device, never uploaded.**
 
-Currently, two official plugins are available:
+Open a PDF or take a photo of a blood-test report. Plainly reads it **on your own device**, shows what's outside the
+printed range and what changed since your last report, explains each result in plain language, and prepares
+questions for your doctor.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+It is built on **Firebase AI Logic hybrid inference**:
+- **Gemini Nano on the device** reads the report and writes explanations.
+- **Gemini in the cloud** can step in for explanations only, and only ever receives de-identified values.
 
-## Expanding the ESLint configuration
+**Live demo:** https://plainly-hybrid.web.app. Press **Try a sample report**. The sample is a fictional patient and lab.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/). An Android app is in progress.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+---
+
+## The problem
+
+Lab reports arrive as a PDF or a photo on the phone, full of red "H" and "L" marks and no context. The doctor visit is
+often days away and short. So people paste their report into a chatbot. That uploads their name, age, phone number,
+patient ID and full results to a cloud service, and the chatbot may misread a number or offer something that sounds
+like a diagnosis.
+
+Plainly takes the opposite approach.
+
+## How Plainly works
+
+1. **Reads the report on your device.**
+   - **Digital PDFs:** a rule-based reader turns the report's text into results, with no AI involved
+     ([`src/lib/parse.ts`](src/lib/parse.ts)).
+   - **Photos and unusual layouts:** Gemini Nano reads them in `ONLY_ON_DEVICE` mode. A photo is **never** sent to
+     the cloud, whatever the settings say.
+   - **Every value is checked against the report's own text** when a text version exists. Values read from a photo are
+     marked "check this value against your report".
+2. **Code, not AI, does the numbers** ([`src/lib/ranges.ts`](src/lib/ranges.ts)): parsing ranges as labs print them
+   ("12.0 - 15.0", "< 100", "> 50", "Upto 40"), high/low flags, near-a-limit warnings, and trends against earlier
+   reports saved in the browser.
+3. **Explains each result.** The model receives **only** these facts ([`src/lib/deid.ts`](src/lib/deid.ts)): test
+   name, value, unit, printed range, the flag code computed, the earlier value, an age band ("50s") and sex. Never the
+   name, lab, dates, IDs, doctor or image.
+   - **Gemini Nano** writes the explanation on the device when it's available.
+   - With **"Cloud explanations"** on, Gemini in the cloud fills in when Nano can't, using the same de-identified
+     facts.
+   - Each explanation shows where it was written: "on this device", "in the cloud, de-identified", or a plain summary.
+4. **Checks every explanation** with a guard ([`src/lib/guard.ts`](src/lib/guard.ts)). An answer is rejected, and a
+   plain template shown instead, if it:
+   - mentions a number that isn't this test's own (value, range limits, earlier value);
+   - reads like a diagnosis ("you have…", "this means you are…");
+   - suggests a medicine or a dose;
+   - doesn't point back to the doctor.
+5. **Prepares a sheet for the doctor:** the questions to ask, printable as one page.
+
+## How hybrid inference is used
+
+| Job | Where it runs | Firebase mode | Input |
+|---|---|---|---|
+| Read a photographed report | **On this device only** | `InferenceMode.ONLY_ON_DEVICE` | report image (JPEG) |
+| Read a digital PDF | Rules in the browser (no model) | none | the PDF's text |
+| Explain a result | On this device, or the cloud when allowed | `PREFER_ON_DEVICE`, or `ONLY_ON_DEVICE` when the cloud is off | de-identified facts only |
+
+- **JSON both ways:** on the device it uses `responseConstraint`; in the cloud, `responseJsonSchema`.
+- **Each answer records its source:** `response.inferenceSource` is saved per explanation and shown in the app.
+- **Nano is prepared after a click,** as Chrome requires: `initializeDeviceModel()` runs from the "prepare" link and
+  shows download progress.
+
+## Firebase products
+
+- **AI Logic:** hybrid inference.
+- **App Check:** Fraud Defense (reCAPTCHA Enterprise) in production; the debug provider locally.
+- **Remote Config:** the cloud model and the image size sent to Nano.
+- **Hosting:** with security headers, and the camera allowed only for the site itself.
+
+There is no database. Earlier reports are kept only in your browser (IndexedDB), as extracted results without images
+or names. You can delete them from the app.
+
+## Safety and limits
+
+- **No diagnosis or prescribing.** Plainly explains lab values and doesn't diagnose, treat or prescribe. The guard
+  enforces this on every answer.
+- **The report's ranges are used.** Reference ranges are the ones printed on your report; Plainly doesn't invent its
+  own.
+- **Photos can be misread.** Values read from a photo are marked for you to check.
+- **The sample is fictional:** a made-up patient and lab, generated by [`tools/sample-report.html`](tools/sample-report.html).
+
+## Run it yourself
+
+You need Node 20+ and a Firebase project.
+
+```bash
+git clone https://github.com/Aditya-galaxy/plainly && cd plainly
+npm install
+cp .env.example .env.local      # fill in your Firebase web config
+npm run dev
+npm test                        # range parsing, the PDF reader, de-identification and the guard
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Set up the Firebase project:
+1. Add a **Web app** and copy its config into `.env.local`.
+2. Go to **AI Logic → Get started**. Choose the Gemini Developer API (free) or the Agent Platform Gemini API (needs
+   billing). Set `VITE_AI_BACKEND` to match (`google` or `agent-platform`).
+3. In **App Check**, register reCAPTCHA Enterprise for production. For localhost, add a debug token as
+   `VITE_APPCHECK_DEBUG_TOKEN`, and never commit it.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+For Gemini Nano in Chrome:
+1. Use desktop Chrome 139 or later with about 22 GB of free disk.
+2. Set `chrome://flags/#prompt-api-for-gemini-nano-multimodal-input` to **Enabled** and restart Chrome.
+3. Click **prepare** next to "Gemini Nano".
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## Testing it as a judge
+
+1. Open the live demo and press **Try a sample report**. It loads two fictional reports, May and November, so
+   trends show.
+2. Press **Explain my results**:
+   - **Without Nano:** turn on **Cloud explanations**. Each result is tagged "explained in the cloud, de-identified".
+   - **With Nano prepared:** results are tagged "explained on this device".
+3. With Nano prepared, try **or a sample photo**. The photo is read entirely on the device.
+4. Press **Print for my doctor**.
+
+## Built during the hackathon
+
+All of Plainly was written for #BuildHybridAI, from 22 Nov 2026. The App Check and hybrid-model setup follows my other
+entry, [Talkthrough](https://github.com/Aditya-galaxy/talkthrough).
+
+## License
+
+MIT
