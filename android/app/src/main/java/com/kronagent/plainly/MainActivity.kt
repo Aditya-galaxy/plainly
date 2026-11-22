@@ -100,7 +100,7 @@ private val SAMPLE_MAY = listOf(
     "Creatinine" to listOf(0.81, "mg/dL", "0.50 - 1.10"), "ALT (SGPT)" to listOf(28.0, "U/L", "7 - 35"),
 ).map { (n, v) -> LabTest(n, v[0] as Double, v[1] as String, parseRange(v[2] as String)) }
 
-data class Report(val tests: List<LabTest>, val meta: Meta, val readBy: String, val earlier: List<List<LabTest>>)
+data class Report(val tests: List<LabTest>, val meta: Meta, val readBy: String, val earlier: List<List<LabTest>>, val text: List<String> = emptyList())
 
 @Composable
 fun PlainlyScreen() {
@@ -130,7 +130,8 @@ fun PlainlyScreen() {
                 if (tests.isEmpty()) throw IllegalStateException("No results were found. Try a clear, flat photo in good light.")
                 val earlier = History.load(ctx).filter { it.first != meta.date }.map { it.second }
                 History.save(ctx, meta.date, tests)
-                report = Report(tests, meta, by, earlier)
+                android.util.Log.d("Plainly", "OCR rows:\n" + rows.joinToString("\n"))
+                report = Report(tests, meta, by, earlier, rows)
             } catch (e: Exception) { error = e.message }
             busy = null
         }
@@ -241,6 +242,15 @@ fun PlainlyScreen() {
                     }
                     Text("Plainly explains lab values and never diagnoses. Reference ranges are the ones printed on your report. Talk to your doctor before making any health decision.",
                         fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 20.dp))
+                    // Transparency: exactly what was read from the photo, so anyone can check the reading.
+                    var showText by remember { mutableStateOf(false) }
+                    TextButton({ showText = !showText }) { Text(if (showText) "Hide the text Plainly read" else "See the text Plainly read") }
+                    if (showText) {
+                        val clip = androidx.compose.ui.platform.LocalClipboardManager.current
+                        Text(r.text.joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, lineHeight = 15.sp,
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.onBackground.copy(alpha = .05f), RoundedCornerShape(8.dp)).padding(12.dp))
+                        TextButton({ clip.setText(androidx.compose.ui.text.AnnotatedString(r.text.joinToString("\n"))) }) { Text("Copy") }
+                    }
                     TextButton({ History.clear(ctx) }) { Text("Forget saved reports on this phone") }
                 }
             }
