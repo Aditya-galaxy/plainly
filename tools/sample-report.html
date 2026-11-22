@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Lab report</title><style>
+@page{size:A4;margin:14mm}
+*{box-sizing:border-box}body{margin:0;font:11.5px/1.45 Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff}
+.sheet{width:182mm;margin:0 auto;padding:6mm 0}
+.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1f5c99;padding-bottom:8px}
+.lab{font-size:20px;font-weight:700;color:#1f5c99}.lab small{display:block;font-size:10px;font-weight:400;color:#555}
+.acc{font-size:10px;color:#555;text-align:right}
+.pt{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 18px;margin:10px 0 12px;padding:8px 10px;background:#f2f6fb;border:1px solid #d6e2ef;font-size:11px}
+.pt b{color:#333}
+h3{margin:14px 0 4px;font-size:12px;background:#1f5c99;color:#fff;padding:4px 8px;letter-spacing:.03em}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #e3e3e3}th{font-size:10.5px;color:#555;font-weight:700}
+td.v{font-weight:700}td.h{color:#b3261e}td.l{color:#b3261e}
+.note{margin-top:14px;font-size:9.5px;color:#666;border-top:1px solid #ddd;padding-top:6px}
+.sig{display:flex;justify-content:space-between;margin-top:18px;font-size:10px;color:#444}
+</style></head><body><div class="sheet" id="sheet"></div>
+<script>
+const R = new URLSearchParams(location.search).get("r") || "now";
+const now = R === "now";
+const D = now ? "18 Nov 2026" : "16 May 2026";
+const rows = (list) => list.map(([n, v, u, ref, f]) => `<tr><td>${n}</td><td class="v ${f||''}">${v}${f?` ${f==='h'?'H':'L'}`:''}</td><td>${u}</td><td>${ref}</td></tr>`).join("");
+const head = '<tr><th>Test</th><th>Result</th><th>Unit</th><th>Biological reference interval</th></tr>';
+const S = {
+  cbc: now ? [["Haemoglobin","10.9","g/dL","12.0 - 15.0","l"],["Total Leucocyte Count","6.8","x10^3/uL","4.0 - 10.0"],["Platelet Count","248","x10^3/uL","150 - 410"],["MCV","76.2","fL","83.0 - 101.0","l"]]
+             : [["Haemoglobin","11.6","g/dL","12.0 - 15.0","l"],["Total Leucocyte Count","7.1","x10^3/uL","4.0 - 10.0"],["Platelet Count","262","x10^3/uL","150 - 410"],["MCV","79.4","fL","83.0 - 101.0","l"]],
+  sugar: now ? [["Glucose, Fasting","108","mg/dL","70 - 100","h"],["HbA1c (Glycated Haemoglobin)","6.1","%","4.0 - 5.6","h"]]
+             : [["Glucose, Fasting","101","mg/dL","70 - 100","h"],["HbA1c (Glycated Haemoglobin)","5.8","%","4.0 - 5.6","h"]],
+  lipid: now ? [["Cholesterol, Total","228","mg/dL","< 200","h"],["LDL Cholesterol","148","mg/dL","< 100","h"],["HDL Cholesterol","42","mg/dL","> 50","l"],["Triglycerides","168","mg/dL","< 150","h"]]
+             : [["Cholesterol, Total","214","mg/dL","< 200","h"],["LDL Cholesterol","139","mg/dL","< 100","h"],["HDL Cholesterol","45","mg/dL","> 50","l"],["Triglycerides","151","mg/dL","< 150","h"]],
+  thyroid: now ? [["TSH (Thyroid Stimulating Hormone)","6.80","uIU/mL","0.40 - 4.00","h"],["Free T4","0.92","ng/dL","0.80 - 1.80"]]
+               : [["TSH (Thyroid Stimulating Hormone)","5.10","uIU/mL","0.40 - 4.00","h"],["Free T4","1.01","ng/dL","0.80 - 1.80"]],
+  vit: now ? [["Vitamin D, 25-Hydroxy","14.2","ng/mL","30 - 100","l"],["Vitamin B12","212","pg/mL","200 - 900"]]
+           : [["Vitamin D, 25-Hydroxy","17.6","ng/mL","30 - 100","l"],["Vitamin B12","240","pg/mL","200 - 900"]],
+  kidney: [["Creatinine","0.81","mg/dL","0.50 - 1.10"],["ALT (SGPT)","28","U/L","7 - 35"]],
+};
+document.getElementById("sheet").innerHTML = `
+<div class="head"><div class="lab">Fernhill Diagnostics<small>NABL-style sample report for demonstration · Plot 12, Sector 4, Fernhill</small></div>
+<div class="acc">Report ID: FD-${now?"88213":"80455"}<br>Collected: ${D}, 08:12<br>Reported: ${D}, 17:40</div></div>
+<div class="pt"><div><b>Patient:</b> Rhea Sharma</div><div><b>Age / Sex:</b> 52 Y / Female</div><div><b>Ref. by:</b> Dr. A. Kulkarni</div>
+<div><b>Patient ID:</b> FH-204731</div><div><b>Sample:</b> Blood (fasting)</div><div><b>Phone:</b> +91 98XXX 41207</div></div>
+<h3>COMPLETE BLOOD COUNT</h3><table>${head}${rows(S.cbc)}</table>
+<h3>DIABETES</h3><table>${head}${rows(S.sugar)}</table>
+<h3>LIPID PROFILE</h3><table>${head}${rows(S.lipid)}</table>
+<h3>THYROID</h3><table>${head}${rows(S.thyroid)}</table>
+<h3>VITAMINS</h3><table>${head}${rows(S.vit)}</table>
+<h3>KIDNEY &amp; LIVER</h3><table>${head}${rows(S.kidney)}</table>
+<div class="note">Results relate only to the sample tested. H = above reference interval, L = below. This is a fictional sample report generated for software demonstration; the patient, lab and doctor do not exist.</div>
+<div class="sig"><span>Checked by: Lab Technologist</span><span>Dr. M. Fernandes, MD (Pathology)</span></div>`;
+</script></body></html>

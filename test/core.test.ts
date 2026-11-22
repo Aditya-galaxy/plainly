@@ -56,3 +56,29 @@ test("de-identification keeps only the test, numbers, age band and sex", () => {
   assert.equal(c.sex, "female");
   assert.equal(c.flag, "high");
 });
+
+import { parseMeta, parseRows } from "../src/lib/parse.ts";
+test("rule-based reader handles the usual one-test-per-line layout", () => {
+  const lines = [
+    "Patient: Rhea Sharma Age / Sex: 52 Y / Female Ref. by: Dr. A. Kulkarni",
+    "Report ID: FD-88213 Collected: 18 Nov 2026, 08:12",
+    "Test Result Unit Biological reference interval",
+    "Haemoglobin 10.9 L g/dL 12.0 - 15.0",
+    "HbA1c (Glycated Haemoglobin) 6.1 H % 4.0 - 5.6",
+    "LDL Cholesterol 148 H mg/dL < 100",
+    "HDL Cholesterol 42 L mg/dL > 50",
+    "TSH (Thyroid Stimulating Hormone) 6.80 H uIU/mL 0.40 - 4.00",
+    "Platelet Count 248 x10^3/uL 150 - 410",
+    "Free T4 0.92 ng/dL 0.80 - 1.80",
+    "Vitamin B12 212 pg/mL 200 - 900",
+  ];
+  const rows = parseRows(lines);
+  assert.deepEqual(rows.map((r) => [r.name, r.value, r.unit]), [
+    ["Haemoglobin", 10.9, "g/dL"], ["HbA1c (Glycated Haemoglobin)", 6.1, "%"], ["LDL Cholesterol", 148, "mg/dL"],
+    ["HDL Cholesterol", 42, "mg/dL"], ["TSH (Thyroid Stimulating Hormone)", 6.8, "uIU/mL"], ["Platelet Count", 248, "x10^3/uL"],
+    ["Free T4", 0.92, "ng/dL"], ["Vitamin B12", 212, "pg/mL"],
+  ]);
+  assert.equal(rows[2].range.high, 100);
+  assert.equal(rows[3].range.low, 50);
+  assert.deepEqual(parseMeta(lines), { age: 52, sex: "female", date: "18 Nov 2026" });
+});
