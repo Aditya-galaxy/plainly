@@ -140,6 +140,24 @@ export async function readPhoto(jpegBase64: string): Promise<Reading> {
 
 export type Explained = { text: string; questions: string[]; source: Source; note?: string };
 
+const TIDY =
+  "Rewrite these notes a person wrote for their doctor as a short bullet list. Keep their own words and every detail " +
+  "(how long, how often, when). Drop filler. Do not add anything, do not guess causes, do not name conditions. " +
+  "Return only the bullet list, one item per line starting with \"- \".";
+let tidier: GenerativeModel | undefined;
+
+/** Tidies symptom notes with Gemini Nano. On this device only: symptom notes are never sent to the cloud. */
+export async function tidyNotes(notes: string): Promise<string> {
+  const ai = getAI(firebase(), { backend: new GoogleAIBackend() });
+  tidier ??= getGenerativeModel(ai, {
+    mode: InferenceMode.ONLY_ON_DEVICE,
+    onDeviceParams: { createOptions: { expectedInputs: [{ type: "text", languages: ["en"] }], expectedOutputs: [{ type: "text", languages: ["en"] }],
+      initialPrompts: [{ role: "system", content: [{ type: "text", value: TIDY }] }] } },
+  });
+  const res = await tidier.generateContent(notes.slice(0, 2000));
+  return res.response.text().trim();
+}
+
 /** The template explanation: used when no model is available, or when a model's answer fails the guard. */
 export function plainExplanation(t: Test, trend?: Trend): Explained {
   const f = flagOf(t.value, t.range);

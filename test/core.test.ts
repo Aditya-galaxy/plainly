@@ -99,3 +99,22 @@ test("phone OCR of the sample photo (ML Kit on a Redmi): misread units, a lost '
     ["g/dL", "mg/dL", "ng/mL", "mg/dL", "U/L", "x10^3/uL", "uIU/mL"]);
   assert.deepEqual(parseMeta(lines), { age: 52, sex: "female", date: "18 Nov 2026" });
 });
+
+import { redFlags, tidyIsFaithful } from "../src/lib/symptoms.ts";
+test("red flags: fixed rules catch emergency warning signs, and only those", () => {
+  const ids = (t: string) => redFlags(t).map((f) => f.id);
+  assert.deepEqual(ids("tired for 3 weeks, cold hands"), []);
+  assert.deepEqual(ids("mild headache in the evenings"), []);
+  assert.deepEqual(ids("tightness in my chest when climbing stairs"), ["chest"]);
+  assert.deepEqual(ids("I get short of breath lying down"), ["breath"]);
+  assert.deepEqual(ids("her face is drooping and speech is slurred"), ["stroke"]);
+  assert.deepEqual(ids("I fainted at work yesterday"), ["faint"]);
+  assert.deepEqual(ids("vomited blood this morning"), ["bleed"]);
+  assert.deepEqual(ids("sometimes I don't want to live"), ["selfharm"]);
+  assert.ok(redFlags("sometimes I don't want to live")[0].advice.includes("14416"));
+});
+test("tidied notes may only use the person's own words", () => {
+  const notes = "um so ive been really tired for like 3 weeks and my hands are cold all the time";
+  assert.equal(tidyIsFaithful("- Tired for 3 weeks\n- Hands cold all the time", notes), true);
+  assert.equal(tidyIsFaithful("- Fatigue for 3 weeks, possibly anaemia\n- Poor circulation", notes), false);
+});

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
-import { deviceAvailability, explain, plainExplanation, prepareDevice, readPhoto, type Explained } from "./lib/ai.ts";
+import { deviceAvailability, explain, plainExplanation, prepareDevice, readPhoto, tidyNotes, type Explained } from "./lib/ai.ts";
 import { firebase, firebaseConfigured, settings } from "./lib/firebase.ts";
 import { parseMeta, parseRows } from "./lib/parse.ts";
 import { pdfLines, pdfPreview } from "./lib/pdf.ts";
 import { distance, flagOf, nearEdge, trendOf, verifyAgainstText, type Test, type Trend } from "./lib/ranges.ts";
 import { clearReports, dateValue, listReports, saveReport, type SavedReport } from "./lib/vault.ts";
+import { redFlags, tidyIsFaithful } from "./lib/symptoms.ts";
 
 type Report = { tests: Test[]; age?: number; sex?: "female" | "male"; date?: string; preview?: string; readBy: "rules" | "on_device" };
 type Row = Test & { flag: ReturnType<typeof flagOf>; edge: boolean; trend?: Trend; id: string };
@@ -45,6 +46,11 @@ export default function App() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [showNormal, setShowNormal] = useState(false);
+  const [notes, setNotes] = useState(() => {
+    try { return sessionStorage.getItem("pl.notes") ?? ""; } catch { return ""; }
+  });
+  const [tidied, setTidied] = useState<{ text: string; note?: string } | null>(null);
+  const flags = useMemo(() => redFlags(notes), [notes]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -280,10 +286,39 @@ export default function App() {
           )}
           {unknown.length > 0 && <p className="hint">{unknown.length} result{unknown.length === 1 ? " has" : "s have"} no reference range Plainly could read, so {unknown.length === 1 ? "it isn't" : "they aren't"} flagged.</p>}
 
-          {questions.length > 0 && (
+          <section className="notes no-print">
+            <h2>Anything you've noticed?</h2>
+            <p className="hint">Symptoms, how long, how often. They go on the sheet for your doctor and never leave this device.</p>
+            <textarea value={notes} rows={3} placeholder="For example: tired for 3 weeks, cold hands, short of breath on stairs"
+              onChange={(e) => { setNotes(e.target.value); setTidied(null); try { sessionStorage.setItem("pl.notes", e.target.value); } catch { /* not kept */ } }} />
+            {notes.trim() && nanoReady && (
+              <button className="text" onClick={async () => {
+                try {
+                  const out = await tidyNotes(notes);
+                  setTidied(tidyIsFaithful(out, notes) ? { text: out } : { text: notes, note: "The tidied version added words you didn't write, so your own notes are kept." });
+                } catch { setTidied({ text: notes, note: "Gemini Nano couldn't tidy the notes just now." }); }
+              }}>Tidy my notes on this device</button>
+            )}
+          </section>
+          {flags.length > 0 && (
+            <section className="redflag" role="alert">
+              <h2>Get care now</h2>
+              {flags.map((f) => <p key={f.id}><b>{f.label}.</b> {f.advice}</p>)}
+              <p className="hint">Plainly can't assess symptoms. These are standard warning signs that need a doctor straight away, not a result from AI.</p>
+            </section>
+          )}
+          {(questions.length > 0 || notes.trim()) && (
             <section className="doctor">
-              <h2>Questions for my doctor</h2>
-              <ul>{questions.map((x, i) => <li key={i}><b>{x.test}:</b> {x.q}</li>)}</ul>
+              <h2>For my doctor</h2>
+              {notes.trim() && (<>
+                <h3>What I've noticed</h3>
+                <p className="notes-out">{tidied?.text ?? notes}</p>
+                {tidied?.note && <p className="note no-print">{tidied.note}</p>}
+              </>)}
+              {questions.length > 0 && (<>
+                <h3>Questions about my results</h3>
+                <ul>{questions.map((x, i) => <li key={i}><b>{x.test}:</b> {x.q}</li>)}</ul>
+              </>)}
             </section>
           )}
           <p className="disclaimer">Plainly explains lab values and never diagnoses. Reference ranges are the ones printed on your report. Talk to your doctor before making any health decision.</p>
