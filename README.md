@@ -10,7 +10,7 @@ It is built on **Firebase AI Logic hybrid inference**:
 - **Gemini Nano on the device** reads the report and writes explanations.
 - **Gemini in the cloud** can step in for explanations only, and only ever receives de-identified values.
 
-**Live demo:** https://plainly-hybrid.web.app. Press **Try a sample report**. The sample is a fictional patient and lab.
+**Live demo:** https://plainly-app.web.app. Press **Try a sample report**. The sample is a fictional patient and lab.
 
 Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/). An Android app is in progress.
 

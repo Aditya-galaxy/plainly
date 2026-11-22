@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "plainly-hybrid",
+    "site": "plainly-app",
     "public": "dist",
     "ignore": [
       "firebase.json",

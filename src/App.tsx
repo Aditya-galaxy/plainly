@@ -124,7 +124,9 @@ export default function App() {
   };
 
   const trySample = async () => {
+    setError("");
     setBusy("Loading the sample…");
+    try {
     // The earlier sample report goes into the local history first, so the November one shows trends.
     const prev = await (await fetch("/sample/report-may-2026.pdf")).arrayBuffer();
     const lines = await pdfLines(prev);
@@ -132,6 +134,10 @@ export default function App() {
     await saveReport({ id: `sample-${m.date}`, date: m.date, savedAt: Date.now() - 1, tests: parseRows(lines) });
     const blob = await (await fetch("/sample/report-nov-2026.pdf")).blob();
     await openFile(new File([blob], "report-nov-2026.pdf", { type: "application/pdf" }), { keepEarlier: true });
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy("");
+    }
   };
 
   const tryPhoto = async () => {

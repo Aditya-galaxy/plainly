@@ -3,9 +3,14 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
+/** pdf.js loads a worker on first use; if that stalls (a flaky connection), fail clearly instead of hanging. */
+function withTimeout<T>(p: Promise<T>, ms = 20000): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Opening the PDF took too long. Check your connection and try again.")), ms))]);
+}
+
 /** The text of a PDF, one line per printed line (items grouped by their vertical position). Runs in the browser. */
 export async function pdfLines(data: ArrayBuffer): Promise<string[]> {
-  const doc = await pdfjs.getDocument({ data }).promise;
+  const doc = await withTimeout(pdfjs.getDocument({ data }).promise);
   const lines: string[] = [];
   for (let p = 1; p <= Math.min(doc.numPages, 8); p++) {
     const page = await doc.getPage(p);
@@ -27,7 +32,7 @@ export async function pdfLines(data: ArrayBuffer): Promise<string[]> {
 
 /** First page of a PDF as a JPEG, for showing the report next to the results. */
 export async function pdfPreview(data: ArrayBuffer, width = 900): Promise<string> {
-  const doc = await pdfjs.getDocument({ data: data.slice(0) }).promise;
+  const doc = await withTimeout(pdfjs.getDocument({ data: data.slice(0) }).promise);
   const page = await doc.getPage(1);
   const vp = page.getViewport({ scale: 1 });
   const scale = width / vp.width;
