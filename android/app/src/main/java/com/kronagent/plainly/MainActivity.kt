@@ -233,11 +233,32 @@ fun PlainlyScreen() {
                     var show by remember { mutableStateOf(false) }
                     TextButton({ show = !show }) { Text("${if (show) "Hide" else "Show"} the ${normal.size} results within range") }
                     if (show) Column { normal.forEach { (t, tr) -> ResultCard(t, tr, null, false) } }
+                    // What the person noticed: kept on this phone, put on the doctor sheet; fixed rules flag emergencies.
+                    var notes by remember { mutableStateOf("") }
+                    Text("Anything you've noticed?", fontFamily = FontFamily.Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 22.dp))
+                    Text("Symptoms, how long, how often. They go on the sheet for your doctor and never leave this phone.", fontSize = 13.sp, color = Color.Gray)
+                    OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth().padding(top = 8.dp), minLines = 3,
+                        placeholder = { Text("For example: tired for 3 weeks, cold hands") })
+                    val flags = redFlags(notes)
+                    if (flags.isNotEmpty()) Card(Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = High.copy(alpha = .12f))) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Get care now", fontFamily = FontFamily.Serif, fontSize = 22.sp, color = High)
+                            flags.forEach { Text("${it.label}. ${it.advice}", fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp)) }
+                            Text("Plainly can't assess symptoms. These are standard warning signs that need a doctor straight away, not a result from AI.", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 6.dp))
+                        }
+                    }
                     val qs = (outside + edge).flatMap { (t, _) -> explained[t.name]?.questions?.map { t.name to it }.orEmpty() }
-                    if (qs.isNotEmpty()) Card(Modifier.fillMaxWidth().padding(top = 20.dp)) {
+                    if (qs.isNotEmpty() || notes.isNotBlank()) Card(Modifier.fillMaxWidth().padding(top = 20.dp)) {
                         Column(Modifier.padding(18.dp)) {
-                            Text("Questions for my doctor", fontFamily = FontFamily.Serif, fontSize = 22.sp)
-                            qs.forEach { (n, q) -> Text("• $n: $q", fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp)) }
+                            Text("For my doctor", fontFamily = FontFamily.Serif, fontSize = 22.sp)
+                            if (notes.isNotBlank()) {
+                                Text("WHAT I'VE NOTICED", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 10.dp))
+                                Text(notes.trim(), fontSize = 14.sp)
+                            }
+                            if (qs.isNotEmpty()) {
+                                Text("QUESTIONS ABOUT MY RESULTS", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 10.dp))
+                                qs.forEach { (n, q) -> Text("• $n: $q", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+                            }
                         }
                     }
                     Text("Plainly explains lab values and never diagnoses. Reference ranges are the ones printed on your report. Talk to your doctor before making any health decision.",

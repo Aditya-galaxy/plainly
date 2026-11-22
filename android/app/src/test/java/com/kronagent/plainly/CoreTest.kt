@@ -98,3 +98,18 @@ class PhoneOcrTest {
         assertEquals(Meta(52, "female", "18 Nov 2026"), parseMeta(lines))
     }
 }
+
+class SymptomsTest {
+    private fun ids(t: String) = redFlags(t).map { it.id }
+    @Test fun redFlagsMatchTheWebRules() {
+        assertEquals(emptyList<String>(), ids("tired for 3 weeks, cold hands"))
+        assertEquals(emptyList<String>(), ids("mild headache in the evenings"))
+        assertEquals(listOf("chest"), ids("tightness in my chest when climbing stairs"))
+        assertEquals(listOf("breath"), ids("I get short of breath lying down"))
+        assertEquals(listOf("stroke"), ids("her face is drooping and speech is slurred"))
+        assertEquals(listOf("faint"), ids("I fainted at work yesterday"))
+        assertEquals(listOf("bleed"), ids("vomited blood this morning"))
+        assertEquals(listOf("selfharm"), ids("sometimes I don't want to live"))
+        assertTrue(redFlags("sometimes I don't want to live")[0].advice.contains("14416"))
+    }
+}
