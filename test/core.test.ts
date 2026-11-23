@@ -139,3 +139,16 @@ test("vitals: fixed safety rules", () => {
   assert.deepEqual(analyse(base).alerts, []);
   assert.equal(analyse(base).recovery, 50);
 });
+
+import { analyseWorkout, sampleWorkout } from "../src/lib/workout.ts";
+test("workout summary: highs, lows between efforts, zones, heart-rate recovery", () => {
+  const w = analyseWorkout(sampleWorkout(), 52);
+  assert.equal(w.maxEstimate, 168);
+  assert.equal(w.durationMin, 36);
+  assert.equal(w.highs.length, 4);
+  assert.ok(w.highs.every((h, i) => i === 0 || h.bpm >= w.highs[i - 1].bpm - 2), "efforts get a little harder");
+  assert.ok(w.lows.every((l) => l.t >= 300 && l.bpm < w.highs[0].bpm));
+  assert.ok(w.peak.bpm < w.maxEstimate);
+  assert.ok((w.recovery1min ?? 0) >= 12);
+  assert.equal(Math.round(w.zoneMin.reduce((a, z) => a + z.minutes, 0)), 36);
+});
