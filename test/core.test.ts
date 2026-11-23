@@ -118,3 +118,24 @@ test("tidied notes may only use the person's own words", () => {
   assert.equal(tidyIsFaithful("- Tired for 3 weeks\n- Hands cold all the time", notes), true);
   assert.equal(tidyIsFaithful("- Fatigue for 3 weeks, possibly anaemia\n- Poor circulation", notes), false);
 });
+
+import { analyse, sampleDays, type Day } from "../src/lib/vitals.ts";
+test("vitals: changes are against the person's own baseline; the sample's tired week shows", () => {
+  const r = analyse(sampleDays());
+  assert.equal(r.days, 35); assert.equal(r.baselineDays, 28); assert.equal(r.recentDays, 7);
+  const by = Object.fromEntries(r.changes.map((c) => [c.metric, c]));
+  assert.equal(by.restingHr.direction, "worse"); assert.ok(by.restingHr.delta > 0);
+  assert.equal(by.hrv.direction, "worse"); assert.equal(by.sleepMin.direction, "worse");
+  assert.equal(by.spo2.direction, "steady");
+  assert.ok(r.recovery !== undefined && r.recovery < 50, `recovery ${r.recovery}`);
+  assert.deepEqual(r.alerts.map((a) => a.id), []); // a tired week is a change to mention, not an emergency
+});
+test("vitals: fixed safety rules", () => {
+  const base: Day[] = Array.from({ length: 35 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, "0")}`.replace("2026-10-32", "2026-11-01").replace("2026-10-33", "2026-11-02").replace("2026-10-34", "2026-11-03").replace("2026-10-35", "2026-11-04"), restingHr: 64, hrv: 40, sleepMin: 420, spo2: 96 }));
+  const high = base.map((d, i) => (i >= 32 ? { ...d, restingHr: 108 } : d));
+  assert.ok(analyse(high).alerts.some((a) => a.id === "hr-high"));
+  const lowOx = base.map((d, i) => (i >= 33 ? { ...d, spo2: 88 } : d));
+  assert.equal(analyse(lowOx).alerts.find((a) => a.id === "spo2-low")?.level, "urgent");
+  assert.deepEqual(analyse(base).alerts, []);
+  assert.equal(analyse(base).recovery, 50);
+});
