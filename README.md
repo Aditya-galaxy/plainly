@@ -51,6 +51,28 @@ Plainly takes the opposite approach.
    - suggests a medicine or a dose;
    - doesn't point back to the doctor.
 5. **Prepares a sheet for the doctor:** the questions to ask, printable as one page.
+   - It also holds symptoms you type, with fixed red-flag rules (not AI) that tell you when to get care now.
+
+## Vitals from your watch
+
+The **Vitals** tab compares your last 7 days with **your own** previous 28 days, never with a population "ideal".
+- **Changes:** resting heart rate, heart rate variability, sleep and overnight blood oxygen count as changed only when
+  the move is bigger than your usual day-to-day spread and a minimum that matters (5 bpm, 15% HRV, 45 min sleep,
+  2 points SpO₂) ([`src/lib/vitals.ts`](src/lib/vitals.ts)).
+- **Recovery today:** 50 is a normal day for you; weighted HRV 50%, resting heart rate 30%, sleep 20%, as in
+  [OpenVitals](https://github.com/Aditya-galaxy/openvitals).
+- **Safety alerts are fixed rules:** a resting pulse above 100 or below 40 for 3 days, blood oxygen below 90% for 2
+  nights, or a rise of 10 bpm or more. Each says what to do; none names a condition.
+- **Workout summary** ([`src/lib/workout.ts`](src/lib/workout.ts)): highs and lows, time in each zone (from 220 − age,
+  labelled as an estimate), heart-rate recovery one minute after stopping, and a **live replay** at 60× speed.
+- **Where the data comes from:**
+  - **Android:** Health Connect, which Fitbit, Galaxy Watch, Pixel Watch, Garmin, Zepp, Oura and others sync to.
+    Without a watch, **Put sample in Health Connect** writes the fictional sample and reads it back through the real
+    API; **Remove Plainly's sample** deletes only what Plainly wrote.
+  - **Web:** the built-in fictional sample.
+- **The doctor sheet:** **Add to my doctor sheet** puts the week's changes under "From my watch".
+- **Same numbers everywhere:** the Android engine ([`Vitals.kt`](android/app/src/main/java/com/kronagent/plainly/Vitals.kt))
+  is a line-for-line port, and its tests check the same values as the web.
 
 ## How hybrid inference is used
 
@@ -117,6 +139,10 @@ For Gemini Nano in Chrome:
    - **With Nano prepared:** results are tagged "explained on this device".
 3. With Nano prepared, try **or a sample photo**. The photo is read entirely on the device.
 4. Press **Print for my doctor**.
+5. Open **Vitals**: the fictional week shows 3 changes and recovery 20. Press **Replay live** on the workout, then
+   **Add to my doctor sheet**.
+6. **On Android** (sideload the APK from the releases page): open **Vitals → Connect Health Connect → Put sample in
+   Health Connect**.
 
 ## Built during the hackathon
 

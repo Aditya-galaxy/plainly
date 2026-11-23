@@ -18,8 +18,8 @@ android {
         applicationId = "com.kronagent.plainly"
         minSdk = 26 // firebase-ai-ondevice (ML Kit Prompt API) needs API 26+
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.4"
+        versionCode = 6
+        versionName = "0.1.5"
         buildConfigField("String", "APPCHECK_DEBUG_SECRET", "\"${localProps.getProperty("appcheck.debug", "")}\"")
     }
     buildTypes {
@@ -54,4 +54,6 @@ dependencies {
     implementation("com.google.firebase:firebase-appcheck-playintegrity:20.1.0")
     // On-device OCR (bundled Latin model): Google's own advice is to OCR first, then give Gemini Nano the text.
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    // Vitals from any watch or band that syncs to Health Connect (Fitbit, Galaxy Watch, Pixel Watch, Garmin, Zepp, Oura…).
+    implementation("androidx.health.connect:connect-client:1.1.0")
 }

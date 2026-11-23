@@ -45,7 +45,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { PlainlyTheme { PlainlyScreen() } }
+        // Health Connect opens Plainly with this action to show why it asks for health data.
+        val rationale = intent?.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" || intent?.action == "android.intent.action.VIEW_PERMISSION_USAGE"
+        setContent { PlainlyTheme { PlainlyScreen(rationale) } }
     }
 }
 
@@ -103,7 +105,7 @@ private val SAMPLE_MAY = listOf(
 data class Report(val tests: List<LabTest>, val meta: Meta, val readBy: String, val earlier: List<List<LabTest>>, val text: List<String> = emptyList())
 
 @Composable
-fun PlainlyScreen() {
+fun PlainlyScreen(rationale: Boolean = false) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var allowCloud by remember { mutableStateOf(ctx.getSharedPreferences("plainly", 0).getBoolean("cloud", false)) }
@@ -113,6 +115,8 @@ fun PlainlyScreen() {
     var busy by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val explained = remember { mutableStateMapOf<String, Ai.Explained?>() }
+    var tab by remember { mutableStateOf(if (rationale) 1 else 0) } // 0 = lab report, 1 = vitals
+    var vitalsLines by remember { mutableStateOf(listOf<String>()) }
 
     LaunchedEffect(Unit) { nano = Ai.nanoStatus() }
 
@@ -174,12 +178,24 @@ fun PlainlyScreen() {
                 Text("Your report never leaves this phone" + if (allowCloud) " · explanations may use the cloud with de-identified values" else "",
                     fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color.Gray)
                 HorizontalDivider(Modifier.padding(top = 12.dp))
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(tab == 0, { tab = 0 }, { Text("Lab report") })
+                    FilterChip(tab == 1, { tab = 1 }, { Text("Vitals") })
+                }
                 error?.let { Text(it, color = High, modifier = Modifier.padding(top = 12.dp)) }
                 busy?.let { Text(it, fontFamily = FontFamily.Serif, fontSize = 22.sp, modifier = Modifier.padding(top = 40.dp)) }
             }
 
-            val r = report
-            if (r == null && busy == null) item {
+            if (tab == 1) item {
+                if (rationale) Card(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                    Text("Plainly reads resting heart rate, heart rate variability, sleep, blood oxygen, heart rate and workouts from Health Connect to compare this week with your own usual. It works it all out on this phone and never uploads it. It writes to Health Connect only when you ask it to add its fictional sample, and can remove that sample again.",
+                        fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(16.dp))
+                }
+                VitalsPanel(report?.meta?.age, vitalsLines.isNotEmpty()) { vitalsLines = it; tab = 0 }
+            }
+
+            val r = if (tab == 0) report else null
+            if (tab == 0 && r == null && busy == null) item {
                 Column(Modifier.padding(top = 48.dp)) {
                     Text("Your lab report,", fontFamily = FontFamily.Serif, fontSize = 40.sp, lineHeight = 44.sp)
                     Text("in plain words.", fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic, fontSize = 40.sp, lineHeight = 44.sp, color = MaterialTheme.colorScheme.primary)
@@ -193,6 +209,7 @@ fun PlainlyScreen() {
                         read(ctx.assets.open("sample-report.jpg").use { BitmapFactory.decodeStream(it) })
                     }, Modifier.align(Alignment.CenterHorizontally)) { Text("Try the sample report") }
                     Text("Read on your phone · numbers checked by code · explains, never diagnoses", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 24.dp))
+                    if (vitalsLines.isNotEmpty()) DoctorSheet("", emptyList(), vitalsLines, "Open a report to add your results and questions to this sheet.")
                 }
             }
 
@@ -248,19 +265,7 @@ fun PlainlyScreen() {
                         }
                     }
                     val qs = (outside + edge).flatMap { (t, _) -> explained[t.name]?.questions?.map { t.name to it }.orEmpty() }
-                    if (qs.isNotEmpty() || notes.isNotBlank()) Card(Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                        Column(Modifier.padding(18.dp)) {
-                            Text("For my doctor", fontFamily = FontFamily.Serif, fontSize = 22.sp)
-                            if (notes.isNotBlank()) {
-                                Text("WHAT I'VE NOTICED", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 10.dp))
-                                Text(notes.trim(), fontSize = 14.sp)
-                            }
-                            if (qs.isNotEmpty()) {
-                                Text("QUESTIONS ABOUT MY RESULTS", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 10.dp))
-                                qs.forEach { (n, q) -> Text("• $n: $q", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
-                            }
-                        }
-                    }
+                    if (qs.isNotEmpty() || notes.isNotBlank() || vitalsLines.isNotEmpty()) DoctorSheet(notes, qs, vitalsLines, null)
                     Text("Plainly explains lab values and never diagnoses. Reference ranges are the ones printed on your report. Talk to your doctor before making any health decision.",
                         fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 20.dp))
                     // Transparency: exactly what was read from the photo, so anyone can check the reading.
@@ -275,6 +280,20 @@ fun PlainlyScreen() {
                     TextButton({ History.clear(ctx) }) { Text("Forget saved reports on this phone") }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DoctorSheet(notes: String, qs: List<Pair<String, String>>, vitals: List<String>, hint: String?) {
+    Card(Modifier.fillMaxWidth().padding(top = 20.dp)) {
+        Column(Modifier.padding(18.dp)) {
+            Text("For my doctor", fontFamily = FontFamily.Serif, fontSize = 22.sp)
+            @Composable fun head(t: String) = Text(t, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray, modifier = Modifier.padding(top = 10.dp))
+            if (notes.isNotBlank()) { head("WHAT I'VE NOTICED"); Text(notes.trim(), fontSize = 14.sp) }
+            if (qs.isNotEmpty()) { head("QUESTIONS ABOUT MY RESULTS"); qs.forEach { (n, q) -> Text("• $n: $q", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) } }
+            if (vitals.isNotEmpty()) { head("FROM MY WATCH (LAST WEEK VS MY USUAL)"); vitals.forEach { Text("• $it", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) } }
+            hint?.let { Text(it, fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(top = 10.dp)) }
         }
     }
 }
