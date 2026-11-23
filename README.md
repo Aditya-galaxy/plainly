@@ -141,7 +141,7 @@ For Gemini Nano in Chrome:
 4. Press **Print for my doctor**.
 5. Open **Vitals**: the fictional week shows 3 changes and recovery 20. Press **Replay live** on the workout, then
    **Add to my doctor sheet**.
-6. **On Android** (sideload the APK from the releases page): open **Vitals → Connect Health Connect → Put sample in
+6. **On Android** (sideload the APK from the [latest release](https://github.com/Aditya-galaxy/plainly/releases/latest)): open **Vitals → Connect Health Connect → Put sample in
    Health Connect**.
 
 ## Built during the hackathon
