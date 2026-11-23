@@ -111,3 +111,65 @@ button:disabled { opacity: .45; cursor: default; }
 .redflag p { margin: 6px 0; }
 .doctor h3 { font: 600 14px var(--sans); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); margin: 16px 0 6px; }
 .notes-out { white-space: pre-wrap; margin: 0; }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; margin-top: 18px; }
+.tabs button { border: 1px solid var(--rule); background: transparent; border-radius: 999px; padding: 8px 16px; font-size: 14px; color: var(--ink-2); }
+.tabs button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* vitals */
+.vitals { padding-top: 30px; }
+.vitals h1 { font: 400 clamp(30px, 5vw, 42px)/1.1 var(--serif); letter-spacing: -.015em; margin: 4px 0 10px; }
+.lead.small { font-size: 16px; margin-bottom: 20px; }
+.recovery { display: flex; align-items: center; gap: 20px; margin: 22px 0 10px; padding: 16px 20px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); }
+.recovery h2 { font: 400 24px/1.1 var(--serif); margin: 0 0 4px; }
+.recovery .hint { margin: 0; }
+.gauge { width: 110px; flex: none; }
+.gauge path { fill: none; stroke-width: 9; stroke-linecap: round; }
+.gauge .track { stroke: var(--rule); }
+.gauge .fill { stroke: var(--accent); }
+.gauge .fill.low { stroke: var(--edge); }
+.gauge .num { font: 500 30px var(--serif); fill: var(--ink); }
+.gauge .of { font: 11px var(--mono); fill: var(--ink-3); }
+.metrics { list-style: none; padding: 0; margin: 12px 0 0; }
+.metric { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.metric-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.metric .name { font-weight: 600; }
+.chip.worse { color: #fff; background: var(--edge); }
+.chip.better { color: #fff; background: var(--accent); }
+.spark { width: 100%; height: 56px; margin: 8px 0 4px; display: block; }
+.spark .usual { fill: var(--band); }
+.spark .week { fill: var(--ink); opacity: .05; }
+.spark .line { fill: none; stroke: var(--ok); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.spark .line.worse { stroke: var(--edge); }
+.workout { margin-top: 30px; padding: 20px 22px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); }
+.workout h2 { font: 400 24px/1.1 var(--serif); margin: 0; }
+.live { margin: 12px 0 0; font: 500 34px var(--serif); display: flex; align-items: baseline; gap: 10px; }
+.live small { font: 13px var(--sans); color: var(--ink-3); }
+.live-zone { margin-left: auto; font: 12.5px var(--mono); color: var(--ink-3); }
+.beat { color: var(--high); display: inline-block; animation: beat 1s ease-in-out infinite; font-size: 26px; }
+@keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } }
+.hr { width: 100%; height: auto; margin-top: 12px; display: block; }
+.hr .zone { opacity: .5; }
+.zone.z2, .sw.z2, i.z2 { fill: #d9efe7; background: #b9dfd1; }
+.zone.z3, .sw.z3, i.z3 { fill: #fbeccd; background: #f1d18f; }
+.zone.z4, .sw.z4, i.z4 { fill: #f9d9c6; background: #ec9f74; }
+.zone.z5, .sw.z5, i.z5 { fill: #f4c2c2; background: #d9534f; }
+.sw.z1, i.z1 { background: #d6dde0; }
+.hr .hrline { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.hr .hi { fill: var(--high); } .hr .lo { fill: var(--low); }
+.hr .cursor { fill: var(--high); stroke: var(--card); stroke-width: 2; }
+.hr .stop { stroke: var(--ink-3); stroke-dasharray: 4 4; }
+.hr .axis { font: 11px var(--mono); fill: var(--ink-3); }
+.wstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+.wstats b { display: block; font: 500 26px var(--serif); }
+.wstats span { font-size: 12.5px; color: var(--ink-3); }
+.zones { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.zones li { display: grid; grid-template-columns: 14px 80px 1fr 60px; align-items: center; gap: 8px; }
+.zones .bar { height: 8px; background: var(--rule); border-radius: 99px; overflow: hidden; }
+.zones .bar i { display: block; height: 100%; }
+.wnotes { margin: 14px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 14.5px; }
+.wnotes li { margin: 4px 0; }
+@media (max-width: 720px) { .wstats { grid-template-columns: repeat(2, 1fr); } .hr .axis { font-size: 19px; } .hr .hrline { stroke-width: 2.6; } .hr circle { r: 7px; } }
+@media (prefers-color-scheme: dark) { .hr .zone { opacity: .1; } .zone.z2 { fill: #7fd1b2; } .zone.z3 { fill: #f1d18f; } .zone.z4 { fill: #ec9f74; } .zone.z5 { fill: #e0605c; } }
+.workout .metric-head .quiet { white-space: nowrap; flex-shrink: 0; }

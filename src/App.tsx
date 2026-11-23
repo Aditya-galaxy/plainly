@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import Vitals from "./Vitals.tsx";
 import { deviceAvailability, explain, plainExplanation, prepareDevice, readPhoto, tidyNotes, type Explained } from "./lib/ai.ts";
 import { firebase, firebaseConfigured, settings } from "./lib/firebase.ts";
 import { parseMeta, parseRows } from "./lib/parse.ts";
@@ -39,6 +40,8 @@ async function fileToJpeg(file: Blob, maxWidth: number): Promise<string> {
 
 export default function App() {
   const [allowCloud, setAllowCloud] = useState(() => pref("pl.cloud", false));
+  const [tab, setTab] = useState<"report" | "vitals">("report");
+  const [vitalsLines, setVitalsLines] = useState<string[]>([]);
   const [nano, setNano] = useState({ status: "checking", progress: 0 });
   const [report, setReport] = useState<Report | null>(null);
   const [earlier, setEarlier] = useState<SavedReport[]>([]);
@@ -217,10 +220,15 @@ export default function App() {
         <span>Your report never leaves this device{allowCloud ? " · explanations may use the cloud with de-identified values" : ""}</span>
       </p>
 
+      <nav className="tabs no-print" aria-label="Sections">
+        <button className={tab === "report" ? "on" : ""} onClick={() => setTab("report")}>Lab report</button>
+        <button className={tab === "vitals" ? "on" : ""} onClick={() => setTab("vitals")}>Vitals</button>
+      </nav>
+      {tab === "vitals" && <Vitals added={vitalsLines.length > 0} onAddToSheet={(lines) => { setVitalsLines(lines); setTab("report"); }} />}
       {error && <p className="error no-print" role="alert">{error}</p>}
       {busy && <p className="busy no-print" aria-live="polite">{busy}</p>}
 
-      {!report && !busy && (
+      {tab === "report" && !report && !busy && (
         <main className="hero">
           <h1>Your lab report,<br /><em>in plain words.</em></h1>
           <p className="lead">
@@ -239,13 +247,21 @@ export default function App() {
             <li><b>Numbers checked by code.</b> Ranges, flags and trends are worked out exactly, not by AI.</li>
             <li><b>Explains, never diagnoses.</b> Every explanation is checked before you see it.</li>
           </ul>
+          {vitalsLines.length > 0 && (
+            <section className="doctor">
+              <h2>For my doctor</h2>
+              <h3>From my watch (last week vs my usual)</h3>
+              <ul>{vitalsLines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+              <p className="hint">Open a report to add your results and questions to this sheet.</p>
+            </section>
+          )}
           {!nanoReady && nano.status !== "checking" && (
             <p className="hint">PDFs work everywhere. Photos and on-device explanations need Gemini Nano in desktop Chrome 139+ (about 22 GB free disk; enable <code>chrome://flags/#prompt-api-for-gemini-nano-multimodal-input</code>), or the Plainly Android app on a supported phone.</p>
           )}
         </main>
       )}
 
-      {report && (
+      {tab === "report" && report && (
         <main className="report">
           <section className="summary">
             <div>
@@ -307,7 +323,7 @@ export default function App() {
               <p className="hint">Plainly can't assess symptoms. These are standard warning signs that need a doctor straight away, not a result from AI.</p>
             </section>
           )}
-          {(questions.length > 0 || notes.trim()) && (
+          {(questions.length > 0 || notes.trim() || vitalsLines.length > 0) && (
             <section className="doctor">
               <h2>For my doctor</h2>
               {notes.trim() && (<>
@@ -318,6 +334,10 @@ export default function App() {
               {questions.length > 0 && (<>
                 <h3>Questions about my results</h3>
                 <ul>{questions.map((x, i) => <li key={i}><b>{x.test}:</b> {x.q}</li>)}</ul>
+              </>)}
+              {vitalsLines.length > 0 && (<>
+                <h3>From my watch (last week vs my usual)</h3>
+                <ul>{vitalsLines.map((l, i) => <li key={i}>{l}</li>)}</ul>
               </>)}
             </section>
           )}

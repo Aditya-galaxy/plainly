@@ -12,3 +12,6 @@ android/build
 android/app/build
 android/local.properties
 *.apk
+ios/Plainly/GoogleService-Info.plist
+ios/build
+ios/*.xcodeproj

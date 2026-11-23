@@ -65,7 +65,8 @@ export function analyseWorkout(sess: Session, age?: number): WorkoutSummary {
     const z = ZONES.find((zz) => frac >= zz.from && frac < zz.to);
     if (z) zoneSec.set(z.id, (zoneSec.get(z.id) ?? 0) + dt);
   }
-  const atStop = s.filter((p) => p.t <= sess.endT).at(-1);
+  const before = s.filter((p) => p.t <= sess.endT);
+  const atStop = before[before.length - 1];
   const oneMin = s.find((p) => p.t >= sess.endT + 60);
   const recovery1min = atStop && oneMin ? atStop.bpm - oneMin.bpm : undefined;
 
