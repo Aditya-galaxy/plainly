@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import Vitals from "./Vitals.tsx";
+import Install from "./Install.tsx";
 import { deviceAvailability, explain, plainExplanation, prepareDevice, readPhoto, tidyNotes, type Explained } from "./lib/ai.ts";
 import { firebase, firebaseConfigured, settings } from "./lib/firebase.ts";
 import { parseMeta, parseRows } from "./lib/parse.ts";
@@ -211,6 +212,7 @@ export default function App() {
           <span>Cloud explanations</span>
         </label>
       </header>
+      <Install />
 
       <p className="where no-print">
         <span className={`status ${nanoReady ? "good" : ""}`}>

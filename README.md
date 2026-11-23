@@ -74,6 +74,16 @@ The **Vitals** tab compares your last 7 days with **your own** previous 28 days,
 - **Same numbers everywhere:** the Android engine ([`Vitals.kt`](android/app/src/main/java/com/kronagent/plainly/Vitals.kt))
   is a line-for-line port, and its tests check the same values as the web.
 
+## On iPhone, Android and desktop
+
+- **Android:** the native app (Health Connect, ML Kit OCR, Gemini Nano on supported phones).
+- **iPhone and iPad:** the web app installs to the home screen. In Safari tap **Share → Add to Home Screen**; it then
+  opens full screen and works offline (a service worker caches the app and the samples, never your reports).
+  - **Works on iPhone:** PDF reports, Vitals, the doctor sheet, and cloud explanations if you turn them on.
+  - **Not yet on iPhone:** reading photos and on-device explanations. Gemini Nano runs only in desktop Chrome, and
+    Firebase's hybrid inference for iOS needs the iOS 27 SDK.
+- **Desktop:** Chrome 139+ adds Gemini Nano for photos and on-device explanations.
+
 ## How hybrid inference is used
 
 | Job | Where it runs | Firebase mode | Input |

@@ -1,4 +1,4 @@
-.page { max-width: 860px; margin: 0 auto; padding: 26px 22px 72px; }
+.page { max-width: 860px; margin: 0 auto; padding: max(26px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) max(72px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left)); }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
 
@@ -173,3 +173,5 @@ button:disabled { opacity: .45; cursor: default; }
 @media (max-width: 720px) { .wstats { grid-template-columns: repeat(2, 1fr); } .hr .axis { font-size: 19px; } .hr .hrline { stroke-width: 2.6; } .hr circle { r: 7px; } }
 @media (prefers-color-scheme: dark) { .hr .zone { opacity: .1; } .zone.z2 { fill: #7fd1b2; } .zone.z3 { fill: #f1d18f; } .zone.z4 { fill: #ec9f74; } .zone.z5 { fill: #e0605c; } }
 .workout .metric-head .quiet { white-space: nowrap; flex-shrink: 0; }
+.install { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 12px; background: var(--card); font-size: 14px; color: var(--ink-2); }
+.install .close { margin-left: auto; font-size: 18px; line-height: 1; padding: 0 4px; }
