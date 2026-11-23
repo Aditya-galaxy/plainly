@@ -1,0 +1,40 @@
+FernhilI Diagnostics Report ID: FD-88213
+Collected: No 2026, 08:12
+NABL-style sanple report for demonstration - Plot 12, Sector 4, Forhill
+Reported: 18 Nov 2026, 17:40
+Patient: Rhea Sharma Age / Sex: 52 Y / Female
+Ref. by: Dr. A. Kulkarni
+Patient ID: FH-204731 Sample: Blood (fasting)
+Phone: +91 98XXX41207
+COMPLETE BLoOD COUNT
+Test Result Unit Biological reference interval
+Haemoglobin 10.9 L gldL 12.0- 15.0
+Total Leucocyte Count 6.8 x1043/ulL 4.0- 10.0
+Platelet Count 248 x10^3/uL 150-410
+MCV 76.2 L fL 83.0- 101.0
+DIABETES
+Test Result Unit Biological reference Interval
+Glucose, Fasting 108 H maldL 70-100
+HbA1c (Glycated Haemogiobin) 6.1 H % 4.0-5.6
+LIPID PROFILE
+Test Result Unit Biological reference interval
+Cholesterol, Total 228 H mg/dL 200
+LDL Cholesterol 148 H mg/dL :100
+HDL Cholesterol 42 L mg/dL >50
+Triglycerides 168 H mg/dL < 150
+THYROID
+Test Result Unit Biological reference interval
+TSH (Thyroid Stimulating Hormone) 6.80 H ulU/mL 0.40- 4.00
+Free T4 0 92 ng/dL 0 80-1,80
+VITAMINS
+Test Result Unit Blological reference interval
+Vitamin D, 25-Hydroxy 14.2 L ngimL 30- 100
+Vitamin B12 212 pg/mL 200-900
+KIDNEY & LIVER
+Test Result Unit Biological reference interval
+Creatinine 0.81 mgid. 0.50-1.10
+ALT (SGPT) 28 UL 7-35
+Results relate only to the sample tested. H above reference interval, L = below. This is a fictional sample report generated for software dermonstraion: the patient.
+lab and doctor do not exist
+Checked by: Lab Technologist
+Dr. M. Fernandes, MD (Pathology)

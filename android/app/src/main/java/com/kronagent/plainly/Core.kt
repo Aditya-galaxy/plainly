@@ -112,7 +112,8 @@ fun parseRows(lines: List<String>): List<LabTest> = lines.mapNotNull { line ->
     var range = parseRange(m.groupValues[5])
     if (range.low == null && range.high == null) {
         // A "< 200" can lose its "<" in a photo, leaving one number; the lab's own H/L mark says which side it is.
-        val lone = Regex("^(\\d+(?:\\.\\d+)?)$").find(m.groupValues[5].trim())?.groupValues?.get(1)?.toDouble()
+        // A lone number (OCR lost the "<" or ">", or read it as ":" or ";") is resolved by the lab's own H/L mark.
+        val lone = Regex("^[:;.,'`\"]?\\s*(\\d+(?:\\.\\d+)?)$").find(m.groupValues[5].trim())?.groupValues?.get(1)?.toDouble()
         range = when {
             lone != null && m.groupValues[3] == "H" && value > lone -> Range(high = lone, text = "< ${fmt(lone)}")
             lone != null && m.groupValues[3] == "L" && value < lone -> Range(low = lone, text = "> ${fmt(lone)}")

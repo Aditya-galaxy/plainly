@@ -65,7 +65,8 @@ export function parseRows(lines: string[]): Test[] {
     if (range.low === undefined && range.high === undefined) {
       // A range printed as "< 200" can lose its "<" in a photo, leaving one number. The lab's own H/L mark says
       // which side it is: a value marked H above that number means an upper limit, and L below it a lower limit.
-      const lone = m.groups.range.trim().match(/^(\d+(?:\.\d+)?)$/);
+      // A lone number (OCR lost the "<" or ">", or read it as ":" or ";") is resolved by the lab's own H/L mark.
+      const lone = m.groups.range.trim().match(/^[:;.,'`"]?\s*(\d+(?:\.\d+)?)$/);
       if (lone && m.groups.flag === "H" && value > Number(lone[1])) range = { high: Number(lone[1]), text: `< ${lone[1]}` };
       else if (lone && m.groups.flag === "L" && value < Number(lone[1])) range = { low: Number(lone[1]), text: `> ${lone[1]}` };
       else continue;

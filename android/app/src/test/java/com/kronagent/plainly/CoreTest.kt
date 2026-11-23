@@ -112,4 +112,12 @@ class SymptomsTest {
         assertEquals(listOf("selfharm"), ids("sometimes I don't want to live"))
         assertTrue(redFlags("sometimes I don't want to live")[0].advice.contains("14416"))
     }
+
+    /** What ML Kit produced on the Android 16 emulator: "< 100" came out as ":100". */
+    @Test fun emulatorOcrOfTheSamplePhoto() {
+        val rows = parseRows(javaClass.classLoader!!.getResource("emulator-mlkit-rows.txt")!!.readText().lines())
+        val by = rows.associateBy { it.name }
+        assertEquals(100.0, by["LDL Cholesterol"]!!.range.high)
+        assertEquals(10, rows.count { flagOf(it.value, it.range) == Flag.HIGH || flagOf(it.value, it.range) == Flag.LOW })
+    }
 }

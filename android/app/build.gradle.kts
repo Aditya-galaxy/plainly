@@ -18,8 +18,8 @@ android {
         applicationId = "com.kronagent.plainly"
         minSdk = 26 // firebase-ai-ondevice (ML Kit Prompt API) needs API 26+
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.1.5"
+        versionCode = 7
+        versionName = "0.1.6"
         buildConfigField("String", "APPCHECK_DEBUG_SECRET", "\"${localProps.getProperty("appcheck.debug", "")}\"")
     }
     buildTypes {

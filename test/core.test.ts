@@ -152,3 +152,10 @@ test("workout summary: highs, lows between efforts, zones, heart-rate recovery",
   assert.ok((w.recovery1min ?? 0) >= 12);
   assert.equal(Math.round(w.zoneMin.reduce((a, z) => a + z.minutes, 0)), 36);
 });
+
+test("emulator OCR of the sample photo: '<' read as ':' is still resolved by the lab's H mark", () => {
+  const rows = parseRows(readFileSync(new URL("./emulator-mlkit-rows.txt", import.meta.url), "utf8").split("\n"));
+  const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+  assert.equal(by["LDL Cholesterol"].range.high, 100);
+  assert.equal(rows.filter((r) => flagOf(r.value, r.range) === "high" || flagOf(r.value, r.range) === "low").length, 10);
+});
