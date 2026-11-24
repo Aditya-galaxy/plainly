@@ -8,6 +8,8 @@ import { parseMeta, parseRows } from "./lib/parse.ts";
 import { pdfLines, pdfPreview } from "./lib/pdf.ts";
 import { distance, flagOf, nearEdge, trendOf, verifyAgainstText, type Test, type Trend } from "./lib/ranges.ts";
 import { clearReports, dateValue, listReports, saveReport, type SavedReport } from "./lib/vault.ts";
+import { sampleEarlier } from "./lib/sampleHistory.ts";
+import Timeline from "./Timeline.tsx";
 import { redFlags, tidyIsFaithful } from "./lib/symptoms.ts";
 
 type Report = { tests: Test[]; age?: number; sex?: "female" | "male"; date?: string; preview?: string; readBy: "rules" | "on_device" };
@@ -141,7 +143,9 @@ export default function App() {
     const prev = await (await fetch("/sample/report-may-2026.pdf")).arrayBuffer();
     const lines = await pdfLines(prev);
     const m = parseMeta(lines);
-    await saveReport({ id: `sample-${m.date}`, date: m.date, savedAt: Date.now() - 1, tests: parseRows(lines) });
+    const may = parseRows(lines);
+    for (const e of sampleEarlier(may)) await saveReport({ id: `sample-${e.date}`, date: e.date, savedAt: Date.now() - 2, tests: e.tests });
+    await saveReport({ id: `sample-${m.date}`, date: m.date, savedAt: Date.now() - 1, tests: may });
     const blob = await (await fetch("/sample/report-nov-2026.pdf")).blob();
     await openFile(new File([blob], "report-nov-2026.pdf", { type: "application/pdf" }), { keepEarlier: true });
     } catch (e) {
@@ -303,6 +307,7 @@ export default function App() {
           )}
           {unknown.length > 0 && <p className="hint">{unknown.length} result{unknown.length === 1 ? " has" : "s have"} no reference range Plainly could read, so {unknown.length === 1 ? "it isn't" : "they aren't"} flagged.</p>}
 
+          {earlier.length > 0 && <Timeline reports={[...earlier, { date: report.date, tests: report.tests }]} />}
           <section className="notes no-print">
             <h2>Anything you've noticed?</h2>
             <p className="hint">Symptoms, how long, how often. They go on the sheet for your doctor and never leave this device.</p>

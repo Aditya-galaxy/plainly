@@ -175,3 +175,20 @@ button:disabled { opacity: .45; cursor: default; }
 .workout .metric-head .quiet { white-space: nowrap; flex-shrink: 0; }
 .install { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 12px; background: var(--card); font-size: 14px; color: var(--ink-2); }
 .install .close { margin-left: auto; font-size: 18px; line-height: 1; padding: 0 4px; }
+.timeline { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--rule); }
+.timeline h2 { margin: 0 0 4px; }
+.flowers { display: flex; gap: 18px; flex-wrap: wrap; margin: 18px 0 8px; }
+.flowers figure { margin: 0; text-align: center; width: 96px; }
+.flowers figcaption { display: flex; flex-direction: column; font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+.flowers figcaption b { color: var(--ink); font-weight: 600; }
+.flower { width: 92px; height: 92px; }
+.flower .p-ok { fill: var(--accent); opacity: .28; } .p-high { fill: var(--high); opacity: .88; } .p-low { fill: var(--low); opacity: .88; }
+.flower .core { fill: var(--ink); opacity: .75; }
+.histories { list-style: none; padding: 0; margin: 14px 0 0; }
+.histories li { display: grid; grid-template-columns: 170px 1fr 110px; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+.histories .val { text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.history { width: 100%; height: 36px; } .history polyline { fill: none; stroke: var(--ink-3); stroke-width: 1.4; opacity: .6; }
+.history .p-ok-dot { fill: var(--accent); }
+@media (max-width: 720px) { .histories li { grid-template-columns: 1fr 90px; } .histories .history { grid-column: 1 / -1; } }
+.strip { display: block; width: 100%; height: 14px; margin: 6px 0 4px; }
+.strip .s-usual { fill: var(--ink-3); opacity: .16; } .strip .s-worse { fill: var(--edge); } .strip .s-better { fill: var(--accent); }

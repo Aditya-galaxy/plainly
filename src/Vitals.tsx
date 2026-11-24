@@ -51,6 +51,7 @@ export default function Vitals({ onAddToSheet, added }: { onAddToSheet: (lines: 
                 <span className={`chip ${c.direction}`}>{c.direction === "steady" ? "Usual" : c.direction === "worse" ? "Off your usual" : "Better than usual"}</span>
               </div>
               <Spark days={days} metric={m.key} report={report} />
+              <Strip days={days} metric={m.key} report={report} betterUp={m.better === "up"} />
               <p className="sub">{c.text}</p>
             </li>
           );
@@ -194,5 +195,29 @@ function Workout({ session, w }: { session: Session; w: WorkoutSummary }) {
         {w.notes.map((n) => <li key={n}>{n}</li>)}
       </ul>
     </section>
+  );
+}
+
+/** The blanket, laid flat: one stripe per day, amber when worse than the person's usual band, green when better. */
+function Strip({ days, metric, report, betterUp }: { days: Day[]; metric: Metric; report: VitalsReport; betterUp: boolean }) {
+  const base = days.slice(-(report.recentDays + report.baselineDays), -report.recentDays).map((d) => d[metric]).filter((v): v is number => typeof v === "number");
+  const mean = base.reduce((a, b) => a + b, 0) / Math.max(1, base.length);
+  const sd = Math.sqrt(base.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, base.length - 1));
+  const p = metric === "spo2" ? 10 : 1;
+  const r = (v: number) => Math.round(v * p) / p;
+  const lo = r(mean - sd), hi = r(mean + sd), width = Math.max(hi - lo, 1e-9);
+  const shown = days.slice(-35);
+  return (
+    <svg className="strip" viewBox={`0 0 ${shown.length * 10} 14`} preserveAspectRatio="none" role="img" aria-label="Each day against your usual range">
+      {shown.map((d, i) => {
+        const v = d[metric];
+        if (typeof v !== "number") return null;
+        const x = r(v);
+        const outside = x > hi ? (x - hi) / width : x < lo ? (lo - x) / width : 0;
+        const worse = betterUp ? x < lo : x > hi;
+        const op = Math.min(1, 0.35 + outside * 0.5);
+        return <rect key={d.date} x={i * 10} y={0} width={8.5} height={14} rx={1.5} className={outside === 0 ? "s-usual" : worse ? "s-worse" : "s-better"} style={outside ? { opacity: op } : undefined} />;
+      })}
+    </svg>
   );
 }
