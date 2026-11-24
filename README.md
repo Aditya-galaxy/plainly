@@ -1,18 +1,24 @@
 # Plainly
 
-**Your lab report, in plain words. Read on your device, never uploaded.**
+**Your watch and your lab results, explained in plain words. Privately, on your own phone.**
 
-Open a PDF or take a photo of a blood-test report. Plainly reads it **on your own device**, shows what's outside the
-printed range and what changed since your last report, explains each result in plain language, and prepares
-questions for your doctor.
+- **Vitals:** reads Apple Health (Apple Watch, WHOOP, Oura, Garmin) or Health Connect (Fitbit, Galaxy Watch, Pixel
+  Watch). It compares this week with **your own** last month, with a deep dive and an info pack for every measure.
+- **Lab reports:** opens the lab's PDF or a photo, shows what's outside the range and what changed, and explains each
+  result.
+- **Your doctor:** everything ends in one summary you can share.
 
-It is built on **Firebase AI Logic hybrid inference**:
-- **Gemini Nano on the device** reads the report and writes explanations.
-- **Gemini in the cloud** can step in for explanations only, and only ever receives de-identified values.
+It is built on **Firebase AI Logic hybrid inference** on **iOS, Android and the web**:
+- **Private (the default):** explanations are written on the device, by Apple's on-device model through the
+  Foundation Models framework on iPhone, or by Gemini Nano on Android and in Chrome.
+- **Enhanced (opt-in):** Gemini fills in when the device can't write the explanation, and only ever receives the
+  numbers, never a name, report or photo.
 
-**Live demo:** https://plainly-app.web.app. Press **Try a sample report**. The sample is a fictional patient and lab.
+**Live demo:** https://plainly-app.web.app. **Android:** the APK is in
+[the latest release](https://github.com/Aditya-galaxy/plainly/releases/latest). **iOS:** build from source (below).
+All sample data is fictional.
 
-Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/). An Android app is in progress.
+Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/).
 
 ---
 
@@ -41,9 +47,10 @@ Plainly takes the opposite approach.
    name, value, unit, printed range, the flag code computed, the earlier value, an age band ("50s") and sex. Never the
    name, lab, dates, IDs, doctor or image.
    - **Gemini Nano** writes the explanation on the device when it's available.
-   - With **"Cloud explanations"** on, Gemini in the cloud fills in when Nano can't, using the same de-identified
+   - With **Enhanced explanations** on, Gemini fills in when the device can't, using the same de-identified
      facts.
-   - Each explanation shows where it was written: "on this device", "in the cloud, de-identified", or a plain summary.
+   - Each explanation says how it was written: "Written privately on this device", "Written with Enhanced
+     explanations", or a summary.
 4. **Checks every explanation** with a guard ([`src/lib/guard.ts`](src/lib/guard.ts)). An answer is rejected, and a
    plain template shown instead, if it:
    - mentions a number that isn't this test's own (value, range limits, earlier value);
@@ -74,15 +81,31 @@ The **Vitals** tab compares your last 7 days with **your own** previous 28 days,
 - **Same numbers everywhere:** the Android engine ([`Vitals.kt`](android/app/src/main/java/com/kronagent/plainly/Vitals.kt))
   is a line-for-line port, and its tests check the same values as the web.
 
-## On iPhone, Android and desktop
+## On iPhone, Android and the web
 
-- **Android:** the native app (Health Connect, ML Kit OCR, Gemini Nano on supported phones).
-- **iPhone and iPad:** the web app installs to the home screen. In Safari tap **Share → Add to Home Screen**; it then
-  opens full screen and works offline (a service worker caches the app and the samples, never your reports).
-  - **Works on iPhone:** PDF reports, Vitals, the doctor sheet, and cloud explanations if you turn them on.
-  - **Not yet on iPhone:** reading photos and on-device explanations. Gemini Nano runs only in desktop Chrome, and
-    Firebase's hybrid inference for iOS needs the iOS 27 SDK.
-- **Desktop:** Chrome 139+ adds Gemini Nano for photos and on-device explanations.
+| | iPhone (native) | Android (native) | Web |
+|---|---|---|---|
+| Private explanations | Apple's on-device model (Foundation Models) | Gemini Nano | Gemini Nano in desktop Chrome |
+| Enhanced explanations | Gemini via Firebase AI Logic `GeminiLanguageModel` | Gemini via Firebase AI Logic | Gemini via Firebase AI Logic |
+| Reading reports | Vision (photo and PDF) | ML Kit (photo) | Rules (PDF); Nano (photo) |
+| Vitals | Apple Health | Health Connect | Built-in sample |
+
+The rules (report reading, flags, trends, the guard, red flags, vitals, workouts, the lab-mark cross-check) are ported
+line for line to Swift ([`ios/PlainlyCore`](ios/PlainlyCore)), Kotlin and TypeScript, and each platform's tests
+assert the same numbers from the same fixtures.
+
+### Build the iPhone app
+
+You need Xcode 27 and an iOS 27 simulator or device. Apple Intelligence must be on for private explanations.
+
+```bash
+brew install xcodegen
+cd ios && xcodegen generate && open Plainly.xcodeproj   # add your GoogleService-Info.plist to ios/Plainly/
+cd PlainlyCore && swift test                             # the shared rules: 15 tests
+```
+
+On first launch the app prints an App Check debug token; register it in the Firebase console for Enhanced
+explanations.
 
 ## How hybrid inference is used
 
@@ -145,7 +168,7 @@ For Gemini Nano in Chrome:
 1. Open the live demo and press **Try a sample report**. It loads two fictional reports, May and November, so
    trends show.
 2. Press **Explain my results**:
-   - **Without Nano:** turn on **Cloud explanations**. Each result is tagged "explained in the cloud, de-identified".
+   - **Without Nano:** turn on **Enhanced explanations**. Each result says "Written with Enhanced explanations".
    - **With Nano prepared:** results are tagged "explained on this device".
 3. With Nano prepared, try **or a sample photo**. The photo is read entirely on the device.
 4. Press **Print for my doctor**.
