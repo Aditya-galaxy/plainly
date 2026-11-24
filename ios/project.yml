@@ -1,0 +1,53 @@
+name: Plainly
+options:
+  bundleIdPrefix: com.kronagent
+  deploymentTarget:
+    iOS: "27.0"
+  createIntermediateGroups: true
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    exactVersion: 13.2.0
+  PlainlyCore:
+    path: PlainlyCore
+targets:
+  Plainly:
+    type: application
+    platform: iOS
+    sources:
+      - path: Plainly
+        excludes: ["GoogleService-Info.plist"]
+      - path: Plainly/GoogleService-Info.plist
+        optional: true
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kronagent.plainly
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Plainly
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSCameraUsageDescription: "Plainly reads the photo of your report on this iPhone. The photo is never uploaded."
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Plainly reads resting heart rate, heart rate variability, sleep, blood oxygen, heart rate and workouts to compare this week with your own usual. It works it all out on this iPhone and never uploads it."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Plainly writes to Apple Health only when you ask it to add its fictional sample, and can remove that sample again."
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+    entitlements:
+      path: Plainly/Plainly.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    dependencies:
+      - package: PlainlyCore
+      - package: Firebase
+        product: FirebaseAILogic
+      - package: Firebase
+        product: FirebaseAppCheck
+      - package: Firebase
+        product: FirebaseCore
+    scheme:
+      environmentVariables:
+        FIRDebugEnabled: "YES"
