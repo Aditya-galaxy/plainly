@@ -9,6 +9,8 @@ struct VitalsView: View {
     @State private var loaded: Health.Loaded?
     @State private var busy = false
     @State private var error: String?
+    @State private var showSettings = false
+    @State private var path: [Metric] = []
 
     var body: some View {
         let days = loaded?.days ?? sampleDays()
@@ -20,7 +22,7 @@ struct VitalsView: View {
             + (workout?.recovery1min.map { ["After a \(workout!.durationMin)-minute workout, heart rate fell \($0) bpm in the first minute."] } ?? [])
             + report.alerts.map { "\($0.title)." }
 
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -56,20 +58,22 @@ struct VitalsView: View {
 
                 Section("This week") {
                     ForEach(report.changes, id: \.metric) { c in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(c.metric.label)
-                                Spacer()
-                                Text(c.direction == .steady ? "Usual" : c.direction == .worse ? "Off usual" : "Better")
-                                    .font(.caption.weight(.semibold)).foregroundStyle(c.direction == .worse ? Color.edge : Color.secondary)
+                        NavigationLink { MetricDetail(change: c, days: days, baselineDays: report.baselineDays) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(c.metric.label)
+                                    Spacer()
+                                    Text(c.direction == .steady ? "Usual" : c.direction == .worse ? "Off usual" : "Better")
+                                        .font(.caption.weight(.semibold)).foregroundStyle(c.direction == .worse ? Color.edge : Color.secondary)
+                                }
+                                Chart(Array(days.enumerated()), id: \.offset) { i, d in
+                                    if let v = c.metric.of(d) { LineMark(x: .value("day", i), y: .value(c.metric.unit, v)).foregroundStyle(c.direction == .worse ? Color.edge : Color.secondary.opacity(0.6)) }
+                                }
+                                .chartXAxis(.hidden).chartYAxis(.hidden).chartYScale(domain: .automatic(includesZero: false)).frame(height: 32)
+                                Text(headline(c)).font(.footnote).foregroundStyle(.secondary)
                             }
-                            Chart(Array(days.enumerated()), id: \.offset) { i, d in
-                                if let v = c.metric.of(d) { LineMark(x: .value("day", i), y: .value(c.metric.unit, v)).foregroundStyle(c.direction == .worse ? Color.edge : Color.secondary.opacity(0.6)) }
-                            }
-                            .chartXAxis(.hidden).chartYAxis(.hidden).chartYScale(domain: .automatic(includesZero: false)).frame(height: 32)
-                            Text(c.text).font(.footnote).foregroundStyle(.secondary)
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
 
@@ -100,10 +104,28 @@ struct VitalsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .navigationDestination(for: Metric.self) { m in
+                if let c = report.changes.first(where: { $0.metric == m }) { MetricDetail(change: c, days: days, baselineDays: report.baselineDays) }
+            }
             .navigationTitle("Vitals")
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Settings", systemImage: "gearshape") { showSettings = true } } }
+            .sheet(isPresented: $showSettings) { SettingsView() }
             .overlay { if busy { ProgressView() } }
         }
-        .task { await refresh(ask: false) }
+        .task {
+            await refresh(ask: false)
+            #if DEBUG
+            if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-detail"), i + 1 < ProcessInfo.processInfo.arguments.count,
+               let m = Metric(rawValue: ProcessInfo.processInfo.arguments[i + 1]) { path = [m] }
+            #endif
+        }
+    }
+
+    /// The row's short line: "Up 7 bpm on your usual", "Down 53 min on your usual", "In your usual range".
+    func headline(_ c: Change) -> String {
+        if c.direction == .steady { return "In your usual range" }
+        let amount = c.metric == .sleep ? fmtSleep(abs(c.delta)) : "\(fmt(c.metric == .spo2 ? abs(c.delta) : abs(c.delta).rounded())) \(c.metric.unit)"
+        return "\(c.delta > 0 ? "Up" : "Down") \(amount) on your usual"
     }
 
     /// The devices and apps that wrote the data ("Apple Watch and WHOOP"), or Plainly's own sample.
@@ -203,5 +225,79 @@ struct WorkoutDetail: View {
     func zoneColor(_ id: Int) -> Color {
         [2: Color(red: 0.5, green: 0.82, blue: 0.7), 3: Color(red: 0.95, green: 0.82, blue: 0.56),
          4: Color(red: 0.93, green: 0.62, blue: 0.45), 5: Color(red: 0.85, green: 0.33, blue: 0.31)][id] ?? .gray
+    }
+}
+
+
+/// One vital in depth: 35 days against the person's own usual band, this week's numbers, and a plain-words explanation.
+struct MetricDetail: View {
+    @Environment(AppModel.self) private var model
+    let change: Change
+    let days: [Day]
+    let baselineDays: Int
+
+    var body: some View {
+        let m = change.metric
+        let pts = days.enumerated().compactMap { i, d in m.of(d).map { (i, $0) } }
+        let base = days.dropLast(7).suffix(baselineDays).compactMap(m.of)
+        let mean = base.isEmpty ? 0 : base.reduce(0, +) / Double(base.count)
+        let sd = base.count > 1 ? (base.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(base.count - 1)).squareRoot() : 0
+        let e = model.vitalExplained[m]
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(show(change.recent)).font(.system(size: 40, weight: .semibold)).monospacedDigit()
+                        Text(m == .sleep ? "a night this week" : "this week").foregroundStyle(.secondary)
+                    }
+                    Chart {
+                        RectangleMark(xStart: .value("s", 0), xEnd: .value("e", days.count - 1),
+                                      yStart: .value("lo", mean - sd), yEnd: .value("hi", mean + sd))
+                            .foregroundStyle(Color.teal.opacity(0.12))
+                        RectangleMark(xStart: .value("s", days.count - 7), xEnd: .value("e", days.count - 1))
+                            .foregroundStyle(Color.primary.opacity(0.05))
+                        ForEach(pts, id: \.0) { i, v in
+                            LineMark(x: .value("day", i), y: .value(m.unit, v)).foregroundStyle(Color.primary.opacity(0.8))
+                            PointMark(x: .value("day", i), y: .value(m.unit, v)).symbolSize(i >= days.count - 7 ? 30 : 12)
+                                .foregroundStyle(i >= days.count - 7 ? (change.direction == .worse ? Color.edge : Color.teal) : Color.secondary)
+                        }
+                    }
+                    .chartXAxis { AxisMarks(values: [0, days.count - 8, days.count - 1]) { v in
+                        AxisValueLabel { Text(v.as(Int.self) == days.count - 1 ? "Today" : v.as(Int.self) == 0 ? "5 weeks ago" : "1 week ago") } } }
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 220)
+                    Text("Shaded band: your usual range over the previous \(baselineDays) days.").font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            }
+            Section {
+                LabeledContent("This week", value: show(change.recent))
+                LabeledContent("Your usual", value: show(change.baseline))
+                LabeledContent("Change", value: (change.delta > 0 ? "+" : "−") + (m == .sleep ? fmtSleep(abs(change.delta)) : "\(fmt(m == .spo2 ? abs(change.delta) : abs(change.delta).rounded())) \(m.unit)"))
+            }
+            Section {
+                if let e { Text(e.text) } else { HStack { ProgressView(); Text("Writing an explanation").foregroundStyle(.secondary) } }
+            } header: { Text("What it means") } footer: { if let e, e.source != .rules { Text(e.source.rawValue) } }
+            Section("Talk to a doctor if") { Text(doctorRule(m)) }
+        }
+        .listStyle(.insetGrouped)
+        .defaultScrollAnchor(.top, for: .sizeChanges)
+        .navigationTitle(m.label)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if model.vitalExplained[m] == nil { model.vitalExplained[m] = await AI.explainVital(change, allowCloud: model.enhanced) }
+        }
+    }
+
+    func show(_ v: Double) -> String { change.metric == .sleep ? fmtSleep(v) : "\(fmt(change.metric == .spo2 ? v : v.rounded())) \(change.metric.unit)" }
+
+    /// The same fixed safety rules as the alerts, in plain words.
+    func doctorRule(_ m: Metric) -> String {
+        switch m {
+        case .restingHr: "Your resting heart rate stays above 100, or below 40, for three days, or rises by 10 or more over your usual, especially with tiredness, dizziness or chest pain."
+        case .hrv: "A drop lasts more than a couple of weeks, or comes with feeling unwell."
+        case .sleep: "Poor sleep lasts for weeks, or you are very sleepy in the day."
+        case .spo2: "It averages below 90% for two nights. If you are breathless or your lips look blue, call 112."
+        }
     }
 }

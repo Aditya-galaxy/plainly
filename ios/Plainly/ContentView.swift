@@ -50,12 +50,13 @@ enum History {
 final class AppModel {
     var report: Report?
     var explained: [String: Explained] = [:]
+    var vitalExplained: [Metric: Explained] = [:]
     var notes = ""
     var vitalsLines: [String] = []
     var busy = false
     var error: String?
     var enhanced: Bool = UserDefaults.standard.string(forKey: "plainly.mode") == "enhanced" {
-        didSet { UserDefaults.standard.set(enhanced ? "enhanced" : "private", forKey: "plainly.mode"); explained = [:] }
+        didSet { UserDefaults.standard.set(enhanced ? "enhanced" : "private", forKey: "plainly.mode"); explained = [:]; vitalExplained = [:] }
     }
 
     func read(_ body: () async throws -> Reader.Result) async {
@@ -95,8 +96,8 @@ struct ContentView: View {
     @State private var tab = 0
     var body: some View {
         TabView(selection: $tab) {
-            ReportsTab().tabItem { Label("Reports", systemImage: "doc.text") }.tag(0)
-            VitalsView().tabItem { Label("Vitals", systemImage: "heart") }.tag(1)
+            VitalsView().tabItem { Label("Vitals", systemImage: "heart") }.tag(0)
+            ReportsTab().tabItem { Label("Reports", systemImage: "doc.text") }.tag(1)
         }
         .tint(.teal)
         .environment(model)
@@ -104,8 +105,7 @@ struct ContentView: View {
         .task {
             let args = ProcessInfo.processInfo.arguments
             if args.contains("-enhanced") { model.enhanced = true }
-            if args.contains("-vitals") { tab = 1 }
-            if args.contains("-sample") { await model.trySample() }
+            if args.contains("-sample") { tab = 1; await model.trySample() }
             if args.contains("-notes") { model.notes = "Tired for three weeks, and chest pain on the stairs" }
             if args.contains("-explain"), let r = model.report {
                 for t in r.tests where t.verified && (flagOf(t.value, t.range) != .normal || nearEdge(t.value, t.range)) { await model.explain(t) }
@@ -300,6 +300,7 @@ struct ResultDetail: View {
             }
         }
         .listStyle(.insetGrouped)
+        .defaultScrollAnchor(.top, for: .sizeChanges)
         .navigationTitle(test.name)
         .navigationBarTitleDisplayMode(.inline)
         .task { if test.verified { await model.explain(test) } }

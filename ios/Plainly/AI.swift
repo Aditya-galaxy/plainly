@@ -98,7 +98,11 @@ enum AI {
 
         // On the device first; the cloud only with the user's say-so.
         var attempts: [Source] = []
-        if local.isAvailable { attempts.append(.onDevice) }
+        var useLocal = local.isAvailable
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-cloudonly") { useLocal = false } // to film and test the Enhanced path
+        #endif
+        if useLocal { attempts.append(.onDevice) }
         if allowCloud { attempts.append(.inCloud) }
         if attempts.isEmpty {
             return plain(t, trend, note: "Private explanations aren't available on this iPhone yet. Turn on Enhanced explanations in Settings for a fuller explanation.")
@@ -122,6 +126,43 @@ enum AI {
             }
         }
         return plain(t, trend, note: "A full explanation isn't available right now, so a summary is shown.")
+    }
+
+    static let vitalInstructions = """
+    You help a person understand one change in their own watch data, in plain, calm English for someone without medical \
+    training. Use only the facts given. Say in one sentence what the measure is, then what this week's change means in \
+    everyday terms, then name everyday things that commonly move it (such as a cold, poor sleep, alcohol, stress or hard \
+    training). Do not diagnose or name a disease, do not suggest medicines. Only use numbers that appear in the facts. \
+    End by suggesting they mention it to their doctor if it continues or comes with symptoms.
+    """
+
+    /// Explains one vital's change against the person's own usual. The facts are only the measure and its numbers.
+    static func explainVital(_ c: Change, allowCloud: Bool) async -> Explained {
+        let facts = "\(c.metric.label): \(c.text)"
+        let ns = c.text as NSString
+        let allowed = (try! NSRegularExpression(pattern: "\\d+(?:\\.\\d+)?")).matches(in: c.text, range: NSRange(location: 0, length: ns.length))
+            .compactMap { Double(ns.substring(with: $0.range)) } + [7, 28]
+        var attempts: [Source] = []
+        var useLocal = local.isAvailable
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-cloudonly") { useLocal = false }
+        #endif
+        if useLocal { attempts.append(.onDevice) }
+        if allowCloud { attempts.append(.inCloud) }
+        let fallback = Explained(text: c.text + " Mention it to your doctor if it continues or comes with symptoms.", questions: [], source: .rules)
+        for source in attempts {
+            do {
+                let session = source == .onDevice
+                    ? LanguageModelSession(model: local, instructions: vitalInstructions)
+                    : LanguageModelSession(model: cloud, instructions: vitalInstructions)
+                let answer = try await session.respond(to: "Facts: \(facts)", generating: Explanation.self).content
+                let text = answer.explanation.trimmingCharacters(in: .whitespacesAndNewlines)
+                if checkExplanation(text, allowed: allowed) != nil { var f = fallback; f.source = source; return f }
+                let qs = answer.questions.filter { checkExplanation("\($0) Ask your doctor.", allowed: allowed) == nil }
+                return Explained(text: text, questions: Array(qs.prefix(2)), source: source)
+            } catch { continue }
+        }
+        return fallback
     }
 
     /// For report layouts the rules can't rebuild: the on-device model structures the OCR text. Never the cloud.
