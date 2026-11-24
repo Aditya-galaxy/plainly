@@ -297,6 +297,9 @@ struct ResultDetail: View {
                 if let e, !e.questions.isEmpty {
                     Section("Questions for your doctor") { ForEach(e.questions, id: \.self) { Text($0) } }
                 }
+                if let info = testInfo(test.name) {
+                    Section("About this test") { Text(info).foregroundStyle(.secondary) }
+                }
             }
         }
         .listStyle(.insetGrouped)

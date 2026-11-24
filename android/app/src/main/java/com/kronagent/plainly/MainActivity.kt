@@ -155,17 +155,17 @@ fun PlainlyScreen(rationale: Boolean = false) {
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Plainly", fontFamily = FontFamily.Serif, fontSize = 26.sp, modifier = Modifier.weight(1f))
-                    Text("Cloud explanations", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .7f))
+                    Text("Enhanced explanations", fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .7f))
                     Spacer(Modifier.width(8.dp))
                     Switch(allowCloud, { allowCloud = it; ctx.getSharedPreferences("plainly", 0).edit().putBoolean("cloud", it).apply() })
                 }
                 val nanoText = when {
-                    progress != null && progress!! < 1 -> "Gemini Nano: downloading ${((progress ?: 0.0) * 100).toInt()}%"
-                    nano == OnDeviceModelStatus.AVAILABLE -> "Gemini Nano: on this phone"
-                    nano == OnDeviceModelStatus.DOWNLOADABLE -> "Gemini Nano: not downloaded"
-                    nano == OnDeviceModelStatus.DOWNLOADING -> "Gemini Nano: downloading"
-                    nano == null -> "Gemini Nano: checking"
-                    else -> "Gemini Nano: not available on this phone"
+                    progress != null && progress!! < 1 -> "Private explanations: getting ready, ${((progress ?: 0.0) * 100).toInt()}%"
+                    nano == OnDeviceModelStatus.AVAILABLE -> "Private explanations: ready"
+                    nano == OnDeviceModelStatus.DOWNLOADABLE -> "Private explanations: not set up"
+                    nano == OnDeviceModelStatus.DOWNLOADING -> "Private explanations: getting ready"
+                    nano == null -> "Private explanations: checking"
+                    else -> "Private explanations: not available on this phone"
                 }
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(nanoText, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = if (nano == OnDeviceModelStatus.AVAILABLE) Teal else Color.Gray)
@@ -175,7 +175,7 @@ fun PlainlyScreen(rationale: Boolean = false) {
                         }
                     }) { Text("Download") }
                 }
-                Text("Your report never leaves this phone" + if (allowCloud) " · explanations may use the cloud with de-identified values" else "",
+                Text(if (allowCloud) "Your report stays on this phone. Enhanced explanations send only the numbers." else "Your report stays on this phone.",
                     fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color.Gray)
                 HorizontalDivider(Modifier.padding(top = 12.dp))
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -208,7 +208,7 @@ fun PlainlyScreen(rationale: Boolean = false) {
                         History.save(ctx, "16 May 2026", SAMPLE_MAY)
                         read(ctx.assets.open("sample-report.jpg").use { BitmapFactory.decodeStream(it) })
                     }, Modifier.align(Alignment.CenterHorizontally)) { Text("Try the sample report") }
-                    Text("Read on your phone · numbers checked by code · explains, never diagnoses", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 24.dp))
+                    Text("Read on your phone. Explains, never diagnoses.", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(top = 24.dp))
                     if (vitalsLines.isNotEmpty()) DoctorSheet("", emptyList(), vitalsLines, "Open a report to add your results and questions to this sheet.")
                 }
             }
@@ -220,10 +220,10 @@ fun PlainlyScreen(rationale: Boolean = false) {
                 val normal = rows.filter { flagOf(it.first.value, it.first.range) == Flag.NORMAL && !nearEdge(it.first.value, it.first.range) }
                 item {
                     Column(Modifier.padding(top = 26.dp)) {
-                        Text(listOfNotNull(r.meta.date?.let { "Report from $it" }, r.meta.age?.let { "$it y" }, r.meta.sex).joinToString(" · "), fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color.Gray)
+                        Text(listOfNotNull(r.meta.date?.let { "Report from $it" }, r.meta.age?.let { "$it y" }, r.meta.sex).joinToString(", "), fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Color.Gray)
                         Text(if (outside.isEmpty()) "Everything is within range" else "${outside.size} results outside the range", fontFamily = FontFamily.Serif, fontSize = 30.sp, lineHeight = 34.sp, modifier = Modifier.padding(top = 4.dp))
-                        Text("${outside.count { flagOf(it.first.value, it.first.range) == Flag.HIGH }} high · ${outside.count { flagOf(it.first.value, it.first.range) == Flag.LOW }} low · ${edge.size} near a limit · ${normal.size} in range", fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
-                        Text("Read by ${r.readBy}" + if (r.earlier.isNotEmpty()) " · compared with ${r.earlier.size} earlier report(s) on this phone" else "", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 6.dp))
+                        Text("${outside.count { flagOf(it.first.value, it.first.range) == Flag.HIGH }} high, ${outside.count { flagOf(it.first.value, it.first.range) == Flag.LOW }} low, ${edge.size} near a limit, ${normal.size} in range", fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
+                        Text(if (r.earlier.isNotEmpty()) "Compared with your earlier report." else "", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 6.dp))
                         Row(Modifier.padding(top = 16.dp)) {
                             Button({
                                 scope.launch {
@@ -232,7 +232,7 @@ fun PlainlyScreen(rationale: Boolean = false) {
                                         if (explained[k] != null) continue
                                         explained[k] = null
                                         explained[k] = try { Ai.explain(t, r.meta, tr, allowCloud) } catch (e: Exception) {
-                                            Ai.plain(t, tr).copy(note = if (allowCloud) "Couldn't reach a model just now, so a plain summary is shown." else "Gemini Nano isn't ready and cloud is off, so a plain summary is shown.")
+                                            Ai.plain(t, tr).copy(note = if (allowCloud) "A full explanation isn't available right now, so a summary is shown." else "Private explanations aren't available on this phone. Turn on Enhanced explanations for a fuller explanation.")
                                         }
                                     }
                                 }
@@ -241,7 +241,7 @@ fun PlainlyScreen(rationale: Boolean = false) {
                             OutlinedButton({ report = null; explained.clear() }) { Text("New") }
                         }
                         val done = explained.values.filterNotNull()
-                        if (done.isNotEmpty()) Text("${done.count { it.source == Ai.Source.ON_DEVICE }} explained on this phone · ${done.count { it.source == Ai.Source.IN_CLOUD }} in the cloud",
+                        if (done.isNotEmpty()) Text("${done.count { it.source == Ai.Source.ON_DEVICE }} written privately, ${done.count { it.source == Ai.Source.IN_CLOUD }} with Enhanced explanations",
                             fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
                     }
                 }
@@ -314,12 +314,12 @@ fun ResultCard(t: LabTest, trend: Trend?, e: Ai.Explained?, requested: Boolean) 
                 modifier = Modifier.background(color, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp))
         }
         RangeBar(t, trend, color)
-        Text("Reference ${t.range.text}" + (trend?.let { " · last time ${fmt(it.previous)} " + when (it.direction) { "up" -> "↑"; "down" -> "↓"; else -> "→" } } ?: "") +
-            if (!t.verified) " · check this value against your report" else "", fontSize = 13.sp, color = Color.Gray)
+        Text("Reference ${t.range.text}" + (trend?.let { ". Last time ${fmt(it.previous)} " + when (it.direction) { "up" -> "↑"; "down" -> "↓"; else -> "→" } } ?: "") +
+            if (!t.verified) ". Check this value against your report." else "", fontSize = 13.sp, color = Color.Gray)
         if (requested && e == null) Text("Writing an explanation…", fontStyle = FontStyle.Italic, color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
         e?.let {
             Text(it.text, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp))
-            Text(when (it.source) { Ai.Source.ON_DEVICE -> "explained on this phone"; Ai.Source.IN_CLOUD -> "explained in the cloud, de-identified"; Ai.Source.RULES -> "plain summary" },
+            Text(when (it.source) { Ai.Source.ON_DEVICE -> "Written privately on this phone"; Ai.Source.IN_CLOUD -> "Written with Enhanced explanations"; Ai.Source.RULES -> "Summary" },
                 fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = when (it.source) { Ai.Source.ON_DEVICE -> Teal; Ai.Source.IN_CLOUD -> Cloud; else -> Color.Gray }, modifier = Modifier.padding(top = 4.dp))
             it.note?.let { n -> Text(n, fontSize = 12.sp, color = Edge) }
         }

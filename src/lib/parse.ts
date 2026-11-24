@@ -1,4 +1,4 @@
-import { parseRange, type Test } from "./ranges.ts";
+import { flagOf, parseRange, type Test } from "./ranges.ts";
 
 /**
  * A rule-based reader for digital lab PDFs: most labs print one test per line as
@@ -55,6 +55,7 @@ export function parseMeta(lines: string[]): Meta {
 
 export function parseRows(lines: string[]): Test[] {
   const out: Test[] = [];
+  const marks: string[] = [];
   for (const line of lines) {
     const l = decimalComma(line.replace(/\s+/g, " ").trim());
     if (!l || SKIP.test(l)) continue;
@@ -77,6 +78,21 @@ export function parseRows(lines: string[]): Test[] {
     if (UNITS.includes(canonicalUnit(name)) || (name.match(/[A-Za-z]/g) ?? []).length < 2) continue;
     if (range.low !== undefined && range.high !== undefined && range.low > range.high) continue;
     out.push({ name, value, unit: canonicalUnit(m.groups.unit ?? ""), range, raw: m.groups.value, verified: true });
+    marks.push(m.groups.flag ?? "");
   }
-  return out;
+  return crossCheckMarks(out, marks);
+}
+
+/**
+ * Labs print their own H and L marks. When a report uses them, every reading must agree with the lab: a value read as
+ * outside the range with no mark (or the wrong mark), or a mark on a value read as normal, means the photo was misread
+ * ("248" read as "148"), so that value is marked to check against the report instead of being shown as a finding.
+ */
+export function crossCheckMarks(tests: Test[], marks: string[]): Test[] {
+  if (!marks.some(Boolean)) return tests;
+  return tests.map((t, i) => {
+    const f = flagOf(t.value, t.range);
+    const expected = f === "high" ? "H" : f === "low" ? "L" : "";
+    return f !== "unknown" && marks[i] !== expected ? { ...t, verified: false } : t;
+  });
 }

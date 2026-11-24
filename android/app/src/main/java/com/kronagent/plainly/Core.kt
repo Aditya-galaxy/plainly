@@ -104,10 +104,29 @@ fun canonicalUnit(u: String): String {
 /** "6,80" → "6.80" (a comma read for a decimal point); "1,200" (thousands) is left alone. */
 private fun decimalComma(s: String) = s.replace(Regex("(\\d),(\\d{1,2})(?!\\d)"), "$1.$2")
 
-fun parseRows(lines: List<String>): List<LabTest> = lines.mapNotNull { line ->
+fun parseRows(lines: List<String>): List<LabTest> {
+    val read = lines.mapNotNull { line -> parseRow(line) }
+    return crossCheckMarks(read)
+}
+
+/**
+ * Labs print their own H and L marks. When a report uses them, every reading must agree with the lab: a value read as
+ * outside the range with no mark (or the wrong mark), or a mark on a value read as normal, means the photo was misread
+ * ("248" read as "148"), so that value is marked to check against the report instead of being shown as a finding.
+ */
+fun crossCheckMarks(read: List<Pair<LabTest, String>>): List<LabTest> {
+    if (read.none { it.second.isNotEmpty() }) return read.map { it.first }
+    return read.map { (t, mark) ->
+        val f = flagOf(t.value, t.range)
+        val expected = when (f) { Flag.HIGH -> "H"; Flag.LOW -> "L"; else -> "" }
+        if (f != Flag.UNKNOWN && mark != expected) t.copy(verified = false) else t
+    }
+}
+
+private fun parseRow(line: String): Pair<LabTest, String>? = line.let { line ->
     val l = decimalComma(line.replace(Regex("\\s+"), " ").trim())
-    if (l.isEmpty() || SKIP.containsMatchIn(l)) return@mapNotNull null
-    val m = ROW.find(l) ?: return@mapNotNull null
+    if (l.isEmpty() || SKIP.containsMatchIn(l)) return null
+    val m = ROW.find(l) ?: return null
     val value = m.groupValues[2].toDouble()
     var range = parseRange(m.groupValues[5])
     if (range.low == null && range.high == null) {
@@ -117,15 +136,15 @@ fun parseRows(lines: List<String>): List<LabTest> = lines.mapNotNull { line ->
         range = when {
             lone != null && m.groupValues[3] == "H" && value > lone -> Range(high = lone, text = "< ${fmt(lone)}")
             lone != null && m.groupValues[3] == "L" && value < lone -> Range(low = lone, text = "> ${fmt(lone)}")
-            else -> return@mapNotNull null
+            else -> return null
         }
     }
     // Sanity: a broken OCR line can look like a row ("ng/dL 0 80-1.80"). A test name is never a unit, and a range's
     // low end is never above its high end; such rows are dropped rather than shown to a patient.
     val name = m.groupValues[1].trim()
-    if (canonicalUnit(name) in UNITS || name.count { it.isLetter() } < 2) return@mapNotNull null
-    if (range.low != null && range.high != null && range.low > range.high) return@mapNotNull null
-    LabTest(name, value, canonicalUnit(m.groupValues[4]), range, m.groupValues[2], true)
+    if (canonicalUnit(name) in UNITS || name.count { it.isLetter() } < 2) return null
+    if (range.low != null && range.high != null && range.low > range.high) return null
+    LabTest(name, value, canonicalUnit(m.groupValues[4]), range, m.groupValues[2], true) to m.groupValues[3]
 }
 
 /** A model reading report text can misread a number; each value must appear in the OCR text as printed. */

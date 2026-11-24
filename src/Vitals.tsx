@@ -20,7 +20,7 @@ export default function Vitals({ onAddToSheet, added }: { onAddToSheet: (lines: 
 
   return (
     <main className="vitals">
-      <p className="eyebrow">Sample data (fictional) · 35 days from a watch, plus one workout · stays in this browser</p>
+      <p className="eyebrow">Sample data (fictional), 35 days from a watch, plus one workout, stays in this browser</p>
       <h1>{headline(report)}</h1>
       <p className="lead small">Compared with <b>your own</b> last 28 days, not with anyone else. The Android app reads the same data from Health Connect (Fitbit, Galaxy Watch, Pixel Watch, Garmin, Zepp, Oura).</p>
 
@@ -158,11 +158,11 @@ function Workout({ session, w }: { session: Session; w: WorkoutSummary }) {
           {playing ? "Pause" : t !== null && t < endT ? "Resume" : "Replay live"}
         </button>
       </div>
-      <p className="hint" style={{ marginTop: 4 }}>16 Nov, 6:30 am · {w.durationMin} min · zones from an estimated maximum of {w.maxEstimate} bpm (220 − age; real maximums vary)</p>
+      <p className="hint" style={{ marginTop: 4 }}>16 Nov, 6:30 am, {w.durationMin} min, zones from an estimated maximum of {w.maxEstimate} bpm (220 − age; real maximums vary)</p>
       {live && (
         <p className="live" aria-live="polite">
           <span className="beat" style={{ animationDuration: `${60 / live.bpm}s` }}>♥</span> {live.bpm} <small>bpm</small>
-          <span className="live-zone">{live.t > session.endT ? "stopped, recovering" : zoneOf(live.bpm)?.name ?? "Resting"} · {clock(live.t)}</span>
+          <span className="live-zone">{live.t > session.endT ? "stopped, recovering" : zoneOf(live.bpm)?.name ?? "Resting"}, {clock(live.t)}</span>
         </p>
       )}
       <svg className="hr" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Heart rate during the workout">

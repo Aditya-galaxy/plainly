@@ -115,7 +115,7 @@ export default function App() {
         }
         r = { tests, ...meta, preview: await pdfPreview(data.slice(0)), readBy };
       } else if (file.type.startsWith("image/")) {
-        if (!nanoReady) throw new Error("Reading a photo needs Gemini Nano on this device, and photos are never sent to the cloud. Prepare Gemini Nano above, or open the PDF version of the report.");
+        if (!nanoReady) throw new Error("This browser can't read photos privately yet, and photos are never uploaded. Open the PDF from your lab instead, or use the Android or iPhone app.");
         const jpeg = await fileToJpeg(file, (await settings()).image_width);
         const got = await readPhoto(jpeg.split(",")[1]);
         r = { ...got, preview: jpeg, readBy: "on_device" };
@@ -180,7 +180,7 @@ export default function App() {
       try {
         e = firebaseConfigured ? await explain(r, report, r.trend, allowCloud) : plainExplanation(r, r.trend);
       } catch {
-        e = { ...plainExplanation(r, r.trend), note: allowCloud ? "Couldn't reach a model just now, so a plain summary is shown." : "Gemini Nano isn't ready on this device and cloud is off, so a plain summary is shown." };
+        e = { ...plainExplanation(r, r.trend), note: allowCloud ? "A full explanation isn't available right now, so a summary is shown." : "Private explanations aren't available in this browser. Turn on Enhanced explanations for a fuller explanation." };
       }
       setExplained((x) => ({ ...x, [r.id]: e }));
     }
@@ -206,20 +206,20 @@ export default function App() {
         <button className="wordmark" onClick={reset} aria-label="Plainly home">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h4l2-5 3 10 2-5h3" /></svg>Plainly
         </button>
-        <label className="toggle" title="Only de-identified values are ever sent: test, number, unit, range, age band and sex.">
+        <label className="toggle" title="Private keeps everything on this device. Enhanced may use Google's Gemini with only the test, value, range, age band and sex.">
           <input type="checkbox" checked={allowCloud} onChange={(e) => toggleCloud(e.target.checked)} />
           <span className="track" aria-hidden="true" />
-          <span>Cloud explanations</span>
+          <span>Enhanced explanations</span>
         </label>
       </header>
       <Install />
 
       <p className="where no-print">
         <span className={`status ${nanoReady ? "good" : ""}`}>
-          <span className="dot" />Gemini Nano: {nano.status === "downloading" ? `downloading ${Math.round(nano.progress * 100)}%` : nanoReady ? "on this device" : nano.status === "checking" ? "checking" : nano.status === "downloadable" ? "not downloaded" : "not available here"}
-          {nano.status === "downloadable" && <> · <button className="text" onClick={prepare}>prepare</button></>}
+          Private explanations: {nano.status === "downloading" ? `getting ready, ${Math.round(nano.progress * 100)}%` : nanoReady ? "ready" : nano.status === "checking" ? "checking" : nano.status === "downloadable" ? "not set up" : "not available in this browser"}
+          {nano.status === "downloadable" && <>. <button className="text" onClick={prepare}>Set up</button></>}
         </span>
-        <span>Your report never leaves this device{allowCloud ? " · explanations may use the cloud with de-identified values" : ""}</span>
+        <span>{allowCloud ? "Your report stays on this device. Enhanced explanations send only the numbers." : "Your report stays on this device."}</span>
       </p>
 
       <nav className="tabs no-print" aria-label="Sections">
@@ -267,7 +267,7 @@ export default function App() {
         <main className="report">
           <section className="summary">
             <div>
-              <p className="eyebrow">{report.date ? `Report from ${report.date}` : "Your report"}{report.age ? ` · ${report.age} y` : ""}{report.sex ? ` · ${report.sex}` : ""}</p>
+              <p className="eyebrow">{report.date ? `Report from ${report.date}` : "Your report"}{report.age ? `, ${report.age} y` : ""}{report.sex ? `, ${report.sex}` : ""}</p>
               <h1>{outside.length ? `${outside.length} result${outside.length === 1 ? "" : "s"} outside the range` : "Everything is within range"}</h1>
               <p className="counts">
                 <span><i className="sw high" />{outside.filter((r) => r.flag === "high").length} high</span>
@@ -276,8 +276,7 @@ export default function App() {
                 <span><i className="sw ok" />{normal.length} in range</span>
               </p>
               <p className="readby">
-                Read {report.readBy === "rules" ? "from the PDF's text, by rules (no AI)" : "by Gemini Nano on this device"}
-                {earlier.length ? ` · compared with ${earlier.length} earlier report${earlier.length === 1 ? "" : "s"} saved on this device` : ""}
+                {earlier.length ? `Compared with your earlier report${earlier.length === 1 ? "" : "s"}.` : ""}
               </p>
             </div>
             {report.preview && <img className="thumb no-print" src={report.preview} alt="Your report" />}
@@ -287,7 +286,7 @@ export default function App() {
             <button className="primary" onClick={explainAll} disabled={!outside.length && !edge.length}>Explain my results</button>
             <button className="quiet" onClick={() => window.print()}>Print for my doctor</button>
             <button className="quiet" onClick={reset}>Open another</button>
-            {(nDevice > 0 || nCloud > 0) && <span className="tally"><i className="dot device" />{nDevice} on this device <i className="dot cloud" />{nCloud} in the cloud</span>}
+            {(nDevice > 0 || nCloud > 0) && <span className="tally">{nDevice} written privately, {nCloud} with Enhanced explanations</span>}
           </div>
 
           <ol className="results">
@@ -347,7 +346,7 @@ export default function App() {
           <p className="no-print"><button className="text" onClick={async () => { await clearReports(); setEarlier([]); }}>Forget saved reports on this device</button></p>
         </main>
       )}
-      <footer className="foot no-print">Built on Firebase AI Logic hybrid inference · reports are read on-device; the cloud sees only de-identified values.</footer>
+      <footer className="foot no-print">Plainly explains results and never diagnoses. Your report stays on this device.</footer>
     </div>
   );
 }
@@ -381,14 +380,14 @@ function Result({ r, e }: { r: Row; e?: Explained | "busy" }) {
       <RangeBar r={r} />
       <p className="sub">
         Reference {r.range.text || "not printed"}
-        {r.trend && <> · last time {r.trend.previous} <span className={`trend ${r.trend.direction}`}>{r.trend.direction === "up" ? "↑" : r.trend.direction === "down" ? "↓" : "→"}</span></>}
-        {r.verified === false && <> · <span className="check">check this value against your report</span></>}
+        {r.trend && <>. Last time {r.trend.previous} <span className={`trend ${r.trend.direction}`}>{r.trend.direction === "up" ? "↑" : r.trend.direction === "down" ? "↓" : "→"}</span></>}
+        {r.verified === false && <>. <span className="check">Check this value against your report.</span></>}
       </p>
       {e === "busy" && <p className="explain muted">Writing an explanation…</p>}
       {e && e !== "busy" && (
         <div className="explain">
           <p>{e.text}</p>
-          <p className="meta"><span className={`tag ${e.source}`}>{e.source === "on_device" ? "explained on this device" : e.source === "in_cloud" ? "explained in the cloud, de-identified" : "plain summary"}</span>{e.note && <span className="note">{e.note}</span>}</p>
+          <p className="meta"><span className={`tag ${e.source}`}>{e.source === "on_device" ? "Written privately on this device" : e.source === "in_cloud" ? "Written with Enhanced explanations" : "Summary"}</span>{e.note && <span className="note">{e.note}</span>}</p>
         </div>
       )}
     </li>

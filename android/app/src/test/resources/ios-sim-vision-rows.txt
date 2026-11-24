@@ -1,0 +1,36 @@
+Fernhill Diagnostics Renort ID: FD-88213
+Collected: 18 Nov 2026, 08.14
+vatration - Plot 12, Sector 4, Fomhill Reported: 18 Nov 2026, 17:40
+Dotiont- Rhea Sname Aae / Sex: 52 Y / Female Ref. by: Dr. A. Kulkarni
+Dationt ID: FH-204731 Sample: Blood (tasting) Phone: +91 98XXX 41207
+COMPLETE BLOOD COUNT
+Result Unit Biological reference interval
+Haemoalobin 10.9 L a/dL 12.0 - 15.0
+Total Leucocyte Count 6.8 XiUSIUL 4.0 - 10.0
+Platelet Count 148 x10^3/uL 150 - 410
+MeV 76.2 L 83.0 - 101.0
+DIABETES
+TeSt Kesult Unit Blological reference interval
+Chueose. Fasting 108 H mg/dL 70 - 100
+HhA1c (Givcated Haemoglobin) 6.7H 4.0 - 5.6
+LIPID PROFILE
+les! Result Unit Biological reference interval
+Cholesterol, Total 228 H ma/dl < 200
+LDL Cholesterol 148 H mg/aL <100
+HDl Cholestero 42 L ma/dL > 50
+Trialvcendes 168 H mg/dL < 150
+THYROID
+IOSt KOsult Unit Biological reference intorval
+TSH (Thyroid Stimulating Hormone) 6.80 H ulU/mL 0.40 -4.00
+Free T4 0.92 ng/dL 0.80 - 1.80
+VITAMINS
+Test Result Unit Biological reference interval
+Vitamin D, co-nydruny 14.2 L ng/mL 30 - 100
+Vitamin B12 212 Pg/mL 200- 900
+KINNEY & LVER
+Test Resull Unit Biological reference interval
+Creatinine 0.81 mg/dL 0.50 - 1.10
+ALT (SGPT) UL 7 - 35
+Resuits relate only to the sample tested. H= above reference interval, L= below. This is a fictional sample report generated for software demonstration; the patien
+lab and doctor do not exist.
+Checked by: Lab Technologist Dr. M. Fornandes, MD (Pathology)

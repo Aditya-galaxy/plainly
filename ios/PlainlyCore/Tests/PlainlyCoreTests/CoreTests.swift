@@ -136,3 +136,28 @@ import Testing
         #expect(rows.filter { !$0.verified }.isEmpty)
     }
 }
+
+@Suite struct DeepDiveTests {
+    @Test func tiredWeekIsMostlyOffUsualAndWeeksTrend() {
+        let d = deepDive(.restingHr, days: sampleDays())
+        #expect(d.weeks.count == 5 && d.weeks.last?.label == "This week")
+        #expect(d.weeks.last!.value > d.weeks.first!.value + 5)
+        #expect(d.offDays >= 5 && d.offDays <= d.recentCount)
+        // A day shown inside the usual range is never counted as off it.
+        if let b = d.bestDay { #expect(!(b.value.rounded() > d.usualHigh) || d.offDays == d.recentCount) }
+        #expect(infoPack(.spo2).reading.contains("90%"))
+        #expect(testInfo("HbA1c (Glycated Haemoglobin)")?.contains("two to three months") == true)
+    }
+}
+
+@Suite struct InfoTests {
+    @Test func everySampleTestGetsItsOwnInfo() {
+        let names = ["Haemoglobin", "Total Leucocyte Count", "Platelet Count", "MCV", "Glucose, Fasting", "HbA1c (Glycated Haemoglobin)",
+                     "Cholesterol, Total", "LDL Cholesterol", "HDL Cholesterol", "Triglycerides", "TSH (Thyroid Stimulating Hormone)",
+                     "Free T4", "Vitamin D, 25-Hydroxy", "Vitamin B12", "Creatinine", "ALT (SGPT)"]
+        let infos = names.map { testInfo($0) }
+        #expect(infos.allSatisfy { $0 != nil })
+        #expect(Set(infos.compactMap { $0 }).count == 16) // no test borrows another's text
+        #expect(testInfo("LDL Cholesterol")!.hasPrefix("LDL") && testInfo("HDL Cholesterol")!.hasPrefix("HDL"))
+    }
+}

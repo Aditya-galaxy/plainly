@@ -120,4 +120,12 @@ class SymptomsTest {
         assertEquals(100.0, by["LDL Cholesterol"]!!.range.high)
         assertEquals(10, rows.count { flagOf(it.value, it.range) == Flag.HIGH || flagOf(it.value, it.range) == Flag.LOW })
     }
+
+    /** iOS-simulator text recognition read Platelets 248 as 148; the lab printed no L, so it's held back. */
+    @Test fun misreadValueDisagreeingWithTheLabIsHeldBack() {
+        val rows = parseRows(javaClass.classLoader!!.getResource("ios-sim-vision-rows.txt")!!.readText().lines())
+        val p = rows.first { it.name == "Platelet Count" }
+        assertEquals(148.0, p.value, 1e-9); assertFalse(p.verified)
+        assertEquals(10, rows.count { it.verified && (flagOf(it.value, it.range) == Flag.HIGH || flagOf(it.value, it.range) == Flag.LOW) })
+    }
 }

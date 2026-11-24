@@ -159,3 +159,12 @@ test("emulator OCR of the sample photo: '<' read as ':' is still resolved by the
   assert.equal(by["LDL Cholesterol"].range.high, 100);
   assert.equal(rows.filter((r) => flagOf(r.value, r.range) === "high" || flagOf(r.value, r.range) === "low").length, 10);
 });
+
+test("a misread value that disagrees with the lab's own H/L mark is held back for checking", () => {
+  const rows = parseRows(readFileSync(new URL("./ios-sim-vision-rows.txt", import.meta.url), "utf8").split("\n"));
+  const platelets = rows.find((r) => r.name === "Platelet Count")!;
+  assert.equal(platelets.value, 148); // the photo says 248
+  assert.equal(platelets.verified, false);
+  assert.equal(rows.filter((r) => r.verified && (flagOf(r.value, r.range) === "high" || flagOf(r.value, r.range) === "low")).length, 10);
+  assert.ok(parseRows(["Haemoglobin 10.9 L g/dL 12.0 - 15.0", "Platelet Count 248 x10^3/uL 150 - 410"]).every((r) => r.verified));
+});

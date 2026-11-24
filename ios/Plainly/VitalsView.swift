@@ -243,6 +243,7 @@ struct MetricDetail: View {
         let mean = base.isEmpty ? 0 : base.reduce(0, +) / Double(base.count)
         let sd = base.count > 1 ? (base.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(base.count - 1)).squareRoot() : 0
         let e = model.vitalExplained[m]
+        ScrollViewReader { proxy in
         List {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
@@ -278,15 +279,61 @@ struct MetricDetail: View {
             Section {
                 if let e { Text(e.text) } else { HStack { ProgressView(); Text("Writing an explanation").foregroundStyle(.secondary) } }
             } header: { Text("What it means") } footer: { if let e, e.source != .rules { Text(e.source.rawValue) } }
-            Section("Talk to a doctor if") { Text(doctorRule(m)) }
+            let dive = deepDive(m, days: days)
+            Section("Deep dive") {
+                LabeledContent("Days off your usual this week", value: "\(dive.offDays) of \(dive.recentCount)").id("deep")
+                LabeledContent("Longest run off usual", value: dive.longestRun == 1 ? "1 day" : "\(dive.longestRun) days")
+                if let b = dive.bestDay { LabeledContent("Best day this week", value: "\(show(b.value)), \(dayName(b.date))") }
+                if let w = dive.worstDay { LabeledContent("Hardest day this week", value: "\(show(w.value)), \(dayName(w.date))") }
+                LabeledContent("Your usual range", value: "\(show(dive.usualLow)) to \(show(dive.usualHigh))")
+                if let st = dive.steadiness {
+                    LabeledContent("Day-to-day swings", value: st > 1.5 ? "Bigger than usual" : st < 0.67 ? "Smaller than usual" : "About usual")
+                }
+            }
+            Section("Week by week") {
+                Chart(dive.weeks, id: \.label) { w in
+                    BarMark(x: .value("week", w.label), y: .value(m.unit, w.value))
+                        .foregroundStyle(w.label == "This week" ? (change.direction == .worse ? Color.edge : Color.teal) : Color.secondary.opacity(0.4))
+                        .annotation(position: .top) { Text(show(w.value)).font(.caption2).foregroundStyle(.secondary) }
+                }
+                .chartYScale(domain: .automatic(includesZero: false)).chartYAxis(.hidden).frame(height: 160).padding(.vertical, 6)
+            }
+            let info = infoPack(m)
+            Section("About \(m.label.lowercased())") {
+                infoRow("What it is", info.what)
+                infoRow("How your watch measures it", info.measured)
+                infoRow("What moves it", info.moves)
+                infoRow("How to read it", info.reading)
+            }
+            Section("Talk to a doctor if") { Text(doctorRule(m)).id("doctor") }
         }
         .listStyle(.insetGrouped)
+        .task {
+            #if DEBUG
+            let a = ProcessInfo.processInfo.arguments
+            if a.contains("-deep") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("deep", anchor: .top) }
+            if a.contains("-info") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("doctor", anchor: .bottom) }
+            #endif
+        }
+        }
         .defaultScrollAnchor(.top, for: .sizeChanges)
         .navigationTitle(m.label)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if model.vitalExplained[m] == nil { model.vitalExplained[m] = await AI.explainVital(change, allowCloud: model.enhanced) }
         }
+    }
+
+    func infoRow(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) { Text(title).font(.subheadline.weight(.semibold)); Text(body).font(.subheadline).foregroundStyle(.secondary) }
+            .padding(.vertical, 2)
+    }
+
+    func dayName(_ iso: String) -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.timeZone = TimeZone(identifier: "UTC")
+        guard let d = f.date(from: iso) else { return iso }
+        let o = DateFormatter(); o.dateFormat = "EEE d MMM"; o.timeZone = TimeZone(identifier: "UTC")
+        return o.string(from: d)
     }
 
     func show(_ v: Double) -> String { change.metric == .sleep ? fmtSleep(v) : "\(fmt(change.metric == .spo2 ? v : v.rounded())) \(change.metric.unit)" }

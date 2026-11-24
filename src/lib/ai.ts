@@ -185,7 +185,7 @@ export async function explain(t: Test, who: { age?: number; sex?: string }, tren
   const out = parseJson<{ explanation?: string; questions?: string[] }>(res.response.text());
   const text = (out?.explanation ?? "").replace(/\s+/g, " ").trim();
   const verdict = checkExplanation(text, allowed);
-  if (!verdict.ok) return { ...plainExplanation(t, trend), source, note: `${verdict.reason} A plain summary is shown instead.` };
+  if (!verdict.ok) return { ...plainExplanation(t, trend), source, note: "A summary is shown instead of the written explanation." };
   const questions = (out?.questions ?? []).map((q) => q.trim()).filter((q) => q && checkExplanation(`${q} Ask your doctor.`, allowed).ok).slice(0, 2);
   return { text, questions: questions.length ? questions : plainExplanation(t, trend).questions, source };
 }

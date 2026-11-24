@@ -73,12 +73,12 @@ fun VitalsPanel(age: Int?, added: Boolean, onAddToSheet: (List<String>) -> Unit)
     val workoutAge: Int?
     val label: String
     when (val s = source) {
-        Source.InApp -> { days = sampleDays(); session = sampleWorkout(); workoutAge = 52; label = "Sample data (fictional) · 35 days from a watch, plus one workout" }
+        Source.InApp -> { days = sampleDays(); session = sampleWorkout(); workoutAge = 52; label = "Sample data (fictional), 35 days from a watch, plus one workout" }
         is Source.FromHealth -> {
             days = s.loaded.days; session = s.loaded.workout; workoutAge = age
-            label = "From Health Connect · ${s.loaded.days.size} days" + when {
-                s.loaded.sampleOnly -> " · Plainly's fictional sample"
-                s.loaded.sources.isNotEmpty() -> " · " + s.loaded.sources.joinToString { it.substringAfterLast('.') }
+            label = "From Health Connect, ${s.loaded.days.size} days" + when {
+                s.loaded.sampleOnly -> ", Plainly's fictional sample"
+                s.loaded.sources.isNotEmpty() -> ", " + s.loaded.sources.joinToString { it.substringAfterLast('.') }
                 else -> ""
             }
         }
@@ -243,14 +243,14 @@ private fun WorkoutCard(s: Session, w: WorkoutSummary) {
                     Text(if (playing) "Pause" else if (t != null && t!! < endT) "Resume" else "Replay live")
                 }
             }
-            Text("${w.durationMin} min · zones from an estimated maximum of ${w.maxEstimate} bpm (220 − age; real maximums vary)", fontSize = 12.sp, color = Color.Gray)
+            Text("${w.durationMin} min, zones from an estimated maximum of ${w.maxEstimate} bpm (220 − age; real maximums vary)", fontSize = 12.sp, color = Color.Gray)
             live?.let { l ->
                 val zone = ZONES.find { l.bpm.toDouble() / w.maxEstimate >= it.from && l.bpm.toDouble() / w.maxEstimate < it.to }
                 Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
                     Text("♥ ", color = Red, fontSize = 24.sp)
                     Text("${l.bpm}", fontFamily = FontFamily.Serif, fontSize = 32.sp)
                     Text(" bpm", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.weight(1f).padding(bottom = 6.dp))
-                    Text("${if (l.t > s.endT) "stopped, recovering" else zone?.name ?: "Resting"} · ${clock(l.t)}", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("${if (l.t > s.endT) "stopped, recovering" else zone?.name ?: "Resting"}, ${clock(l.t)}", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 6.dp))
                 }
             }
             val minB = 60f
