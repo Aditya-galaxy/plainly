@@ -16,7 +16,7 @@ It is built on **Firebase AI Logic hybrid inference** on **iOS, Android and the 
 
 **Live demo:** https://plainly-app.web.app. **Android:** the APK is in
 [the latest release](https://github.com/Aditya-galaxy/plainly/releases/latest). **iPhone:** a ready-to-install
-[simulator build](https://github.com/Aditya-galaxy/plainly/releases/tag/ios-v0.1.0), or build from source (below).
+[simulator build](https://github.com/Aditya-galaxy/plainly/releases/tag/ios-v0.1.1), or build from source (below).
 All sample data is fictional.
 
 Built for [#BuildHybridAI 2026](https://firebasehybridaihackathon.devpost.com/).
@@ -97,8 +97,8 @@ assert the same numbers from the same fixtures.
 
 ### Try the iPhone app without building
 
-Download `Plainly-iOS-simulator-0.1.0.zip` from the
-[iOS release](https://github.com/Aditya-galaxy/plainly/releases/tag/ios-v0.1.0), unzip it, open an iOS 27 iPhone in
+Download `Plainly-iOS-simulator-0.1.1.zip` from the
+[iOS release](https://github.com/Aditya-galaxy/plainly/releases/tag/ios-v0.1.1), unzip it, open an iOS 27 iPhone in
 Simulator (Xcode 27), and run:
 
 ```bash
