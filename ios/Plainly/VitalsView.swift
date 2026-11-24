@@ -309,6 +309,12 @@ struct MetricDetail: View {
                 }
                 .chartYScale(domain: .automatic(includesZero: false)).chartYAxis(.hidden).frame(height: 160).padding(.vertical, 6)
             }
+            Section {
+                Blanket(metric: m, days: days, low: dive.usualLow, high: dive.usualHigh).frame(height: CGFloat(min(days.count, 35)) * 7)
+                    .padding(.vertical, 6).id("blanket")
+            } header: { Text(m == .sleep ? "Night by night" : "Day by day") } footer: {
+                Text("One row per \(m == .sleep ? "night" : "day"), newest at the bottom. Amber is worse than your usual, green is better, grey is usual.")
+            }
             let info = infoPack(m)
             Section("About \(m.label.lowercased())") {
                 infoRow("What it is", info.what)
@@ -324,6 +330,7 @@ struct MetricDetail: View {
             let a = ProcessInfo.processInfo.arguments
             if a.contains("-deep") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("deep", anchor: .top) }
             if a.contains("-info") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("doctor", anchor: .bottom) }
+            if a.contains("-blanket") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("blanket", anchor: .center) }
             if a.contains("-meaning") { try? await Task.sleep(for: .seconds(1)); proxy.scrollTo("meaning", anchor: .center) }
             #endif
         }
@@ -358,5 +365,35 @@ struct MetricDetail: View {
         case .sleep: "Poor sleep lasts for weeks, or you are very sleepy in the day."
         case .spo2: "It averages below 90% for two nights. If you are breathless or your lips look blue, call 112."
         }
+    }
+}
+
+
+/// A "blanket": one thin row per day, coloured by how far it sat from the person's usual band (amber worse, green
+/// better, grey usual), so five weeks read at a glance.
+struct Blanket: View {
+    let metric: Metric
+    let days: [Day]
+    let low: Double
+    let high: Double
+    var body: some View {
+        let rows = Array(days.suffix(35))
+        let width = max(high - low, 1e-9)
+        Canvas { ctx, size in
+            let h = size.height / CGFloat(max(rows.count, 1))
+            for (i, d) in rows.enumerated() {
+                guard let v = metric.of(d) else { continue }
+                let p = metric == .spo2 ? 10.0 : 1.0
+                let r = (v * p).rounded() / p
+                // How many usual-widths outside the band, signed so that positive is worse.
+                let outside = r > high ? (r - high) / width : r < low ? (low - r) / width : 0
+                let worse = metric == .restingHr ? r > high : r < low
+                let strength = min(1, 0.35 + outside * 0.5)
+                let color: Color = outside == 0 ? Color.secondary.opacity(0.16) : worse ? Color.edge.opacity(strength) : Color.teal.opacity(strength)
+                let rect = CGRect(x: 0, y: CGFloat(i) * h, width: size.width, height: h - 1.5)
+                ctx.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(color))
+            }
+        }
+        .accessibilityLabel("\(rows.count) days, coloured against your usual range")
     }
 }

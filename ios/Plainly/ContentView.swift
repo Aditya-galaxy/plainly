@@ -69,13 +69,14 @@ final class AppModel {
             #endif
             if res.tests.count < 3, AI.local.isAvailable { res.tests = await AI.readOnDevice(res.rows.joined(separator: "\n")) }
             guard !res.tests.isEmpty else { throw Reader.ReadError.noResults }
-            let earlier = History.load().filter { $0.date != (res.meta.date ?? "") }.map(\.tests)
+            let earlier = timelineReports().filter { $0.id != (res.meta.date ?? "") }.reversed().map(\.tests)
             History.save(date: res.meta.date, tests: res.tests)
             report = Report(tests: res.tests, meta: res.meta, earlier: earlier, rows: res.rows)
         } catch { self.error = error.localizedDescription }
     }
 
     func trySample() async {
+        for (d, t) in sampleEarlier { History.save(date: d, tests: t) }
         History.save(date: "16 May 2026", tests: sampleMay)
         guard let url = Bundle.main.url(forResource: "report-nov-2026", withExtension: "pdf") else { return }
         await read { try await Reader.read(pdf: url) }
@@ -108,7 +109,7 @@ struct ContentView: View {
             if args.contains("-private") { model.enhanced = false }
             if args.contains("-sample") { tab = 1; await model.trySample() }
             if args.contains("-photo") {
-                tab = 1; History.save(date: "16 May 2026", tests: sampleMay)
+                tab = 1; for (d, t) in sampleEarlier { History.save(date: d, tests: t) }; History.save(date: "16 May 2026", tests: sampleMay)
                 if let url = Bundle.main.url(forResource: "sample-report", withExtension: "jpg"), let img = UIImage(contentsOfFile: url.path) {
                     await model.read { try await Reader.read(image: img) }
                 }
@@ -130,6 +131,7 @@ struct ReportsTab: View {
     @State private var showSettings = false
     @State private var showSheet = false
     @State private var path: [String] = []
+    @State private var showTimeline = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -138,6 +140,7 @@ struct ReportsTab: View {
                 else if let r = model.report { ReportList(report: r, showSheet: $showSheet) }
                 else { empty }
             }
+            .navigationDestination(isPresented: $showTimeline) { TimelineView(reports: timelineReports()) }
             .navigationDestination(for: String.self) { name in
                 if let r = model.report, let t = r.tests.first(where: { $0.name == name }) { ResultDetail(test: t, trend: r.trend(t)) }
             }
@@ -147,6 +150,7 @@ struct ReportsTab: View {
                 guard n != nil else { return }
                 if let i = a.firstIndex(of: "-result"), i + 1 < a.count, let t = model.report?.tests.first(where: { $0.name.hasPrefix(a[i + 1]) }) { path = [t.name] }
                 if a.contains("-sheet") { showSheet = true }
+                if a.contains("-timeline") { showTimeline = true }
                 #endif
             }
             .task {
@@ -239,6 +243,14 @@ struct ReportList: View {
             if !edge.isEmpty { Section("Close to a limit") { ForEach(edge) { row($0) } } }
             Section {
                 DisclosureGroup("In range (\(normal.count))", isExpanded: $showNormal) { ForEach(normal) { row($0) } }
+            }
+            let history = timelineReports()
+            if history.count >= 2 {
+                Section {
+                    NavigationLink { TimelineView(reports: history) } label: {
+                        Label("Your timeline, \(history.count) reports", systemImage: "calendar")
+                    }
+                }
             }
             Section {
                 Button { showSheet = true } label: { Label("Prepare for my doctor", systemImage: "stethoscope") }
