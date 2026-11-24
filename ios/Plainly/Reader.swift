@@ -49,7 +49,7 @@ enum Reader {
                 })
             }
             req.recognitionLevel = .accurate
-            req.usesLanguageCorrection = false
+            req.usesLanguageCorrection = false // it can rewrite digits; names are snapped to known tests by the rules instead
             do { try VNImageRequestHandler(cgImage: cg).perform([req]) } catch { cont.resume(throwing: error) }
         }
     }

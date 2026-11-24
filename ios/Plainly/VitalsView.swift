@@ -11,6 +11,7 @@ struct VitalsView: View {
     @State private var error: String?
     @State private var showSettings = false
     @State private var path: [Metric] = []
+    @State private var showWorkout = false
 
     var body: some View {
         let days = loaded?.days ?? sampleDays()
@@ -104,6 +105,9 @@ struct VitalsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .navigationDestination(isPresented: $showWorkout) {
+                if let session, let workout { WorkoutDetail(session: session, w: workout) }
+            }
             .navigationDestination(for: Metric.self) { m in
                 if let c = report.changes.first(where: { $0.metric == m }) { MetricDetail(change: c, days: days, baselineDays: report.baselineDays) }
             }
@@ -117,6 +121,8 @@ struct VitalsView: View {
             #if DEBUG
             if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-detail"), i + 1 < ProcessInfo.processInfo.arguments.count,
                let m = Metric(rawValue: ProcessInfo.processInfo.arguments[i + 1]) { path = [m] }
+            if ProcessInfo.processInfo.arguments.contains("-workout") { showWorkout = true }
+            if ProcessInfo.processInfo.arguments.contains("-settings") { showSettings = true }
             #endif
         }
     }
@@ -210,6 +216,11 @@ struct WorkoutDetail: View {
         .navigationTitle(session.name)
         .navigationBarTitleDisplayMode(.inline)
         // Replay at 60× speed: a 39-minute recording plays in about 40 seconds.
+        .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-replay") { try? await Task.sleep(for: .seconds(3)); playing = true }
+            #endif
+        }
         .task(id: playing) {
             guard playing else { return }
             var cur = t ?? 0
@@ -277,7 +288,7 @@ struct MetricDetail: View {
                 LabeledContent("Change", value: (change.delta > 0 ? "+" : "−") + (m == .sleep ? fmtSleep(abs(change.delta)) : "\(fmt(m == .spo2 ? abs(change.delta) : abs(change.delta).rounded())) \(m.unit)"))
             }
             Section {
-                if let e { Text(e.text) } else { HStack { ProgressView(); Text("Writing an explanation").foregroundStyle(.secondary) } }
+                if let e { Text(e.text).id("meaning") } else { HStack { ProgressView(); Text("Writing an explanation").foregroundStyle(.secondary) }.id("meaning") }
             } header: { Text("What it means") } footer: { if let e, e.source != .rules { Text(e.source.rawValue) } }
             let dive = deepDive(m, days: days)
             Section("Deep dive") {
@@ -313,6 +324,7 @@ struct MetricDetail: View {
             let a = ProcessInfo.processInfo.arguments
             if a.contains("-deep") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("deep", anchor: .top) }
             if a.contains("-info") { try? await Task.sleep(for: .seconds(2)); proxy.scrollTo("doctor", anchor: .bottom) }
+            if a.contains("-meaning") { try? await Task.sleep(for: .seconds(1)); proxy.scrollTo("meaning", anchor: .center) }
             #endif
         }
         }

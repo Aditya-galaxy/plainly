@@ -105,7 +105,14 @@ struct ContentView: View {
         .task {
             let args = ProcessInfo.processInfo.arguments
             if args.contains("-enhanced") { model.enhanced = true }
+            if args.contains("-private") { model.enhanced = false }
             if args.contains("-sample") { tab = 1; await model.trySample() }
+            if args.contains("-photo") {
+                tab = 1; History.save(date: "16 May 2026", tests: sampleMay)
+                if let url = Bundle.main.url(forResource: "sample-report", withExtension: "jpg"), let img = UIImage(contentsOfFile: url.path) {
+                    await model.read { try await Reader.read(image: img) }
+                }
+            }
             if args.contains("-notes") { model.notes = "Tired for three weeks, and chest pain on the stairs" }
             if args.contains("-explain"), let r = model.report {
                 for t in r.tests where t.verified && (flagOf(t.value, t.range) != .normal || nearEdge(t.value, t.range)) { await model.explain(t) }
@@ -122,13 +129,30 @@ struct ReportsTab: View {
     @State private var pickingPDF = false
     @State private var showSettings = false
     @State private var showSheet = false
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if model.busy { ProgressView("Reading your report").frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if let r = model.report { ReportList(report: r, showSheet: $showSheet) }
                 else { empty }
+            }
+            .navigationDestination(for: String.self) { name in
+                if let r = model.report, let t = r.tests.first(where: { $0.name == name }) { ResultDetail(test: t, trend: r.trend(t)) }
+            }
+            .onChange(of: model.report?.tests.count) { _, n in
+                #if DEBUG
+                let a = ProcessInfo.processInfo.arguments
+                guard n != nil else { return }
+                if let i = a.firstIndex(of: "-result"), i + 1 < a.count, let t = model.report?.tests.first(where: { $0.name.hasPrefix(a[i + 1]) }) { path = [t.name] }
+                if a.contains("-sheet") { showSheet = true }
+                #endif
+            }
+            .task {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-settings") { showSettings = true }
+                #endif
             }
             .navigationTitle(model.report == nil ? "" : "Your Report")
             .toolbar {
@@ -194,6 +218,7 @@ struct ReportList: View {
         let check = report.tests.filter { !$0.verified }
         let normal = confident.filter { flagOf($0.value, $0.range) == .normal && !nearEdge($0.value, $0.range) }
 
+        ScrollViewReader { proxy in
         List {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
@@ -203,15 +228,15 @@ struct ReportList: View {
                 }
                 .padding(.vertical, 6)
             }
-            if !outside.isEmpty { Section("Outside the range") { ForEach(outside) { row($0) } } }
-            if !edge.isEmpty { Section("Close to a limit") { ForEach(edge) { row($0) } } }
             if !check.isEmpty {
                 Section {
-                    ForEach(check) { row($0) }
+                    ForEach(check) { row($0).id($0.name == check.first?.name ? "check" : $0.name) }
                 } header: { Text("Check against your report") } footer: {
                     Text("These values may have been misread. Compare them with the printed report.")
                 }
             }
+            if !outside.isEmpty { Section("Outside the range") { ForEach(outside) { row($0) } } }
+            if !edge.isEmpty { Section("Close to a limit") { ForEach(edge) { row($0) } } }
             Section {
                 DisclosureGroup("In range (\(normal.count))", isExpanded: $showNormal) { ForEach(normal) { row($0) } }
             }
@@ -222,6 +247,12 @@ struct ReportList: View {
             }
         }
         .listStyle(.insetGrouped)
+        .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-check") { try? await Task.sleep(for: .seconds(2)); withAnimation(.easeInOut(duration: 1.2)) { proxy.scrollTo("check", anchor: .top) } }
+            #endif
+        }
+        }
     }
 
     func subtitle(high: Int, low: Int) -> String {

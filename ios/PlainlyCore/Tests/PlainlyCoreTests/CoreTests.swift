@@ -161,3 +161,20 @@ import Testing
         #expect(testInfo("LDL Cholesterol")!.hasPrefix("LDL") && testInfo("HDL Cholesterol")!.hasPrefix("HDL"))
     }
 }
+
+@Suite struct NameTests {
+    @Test func misreadNamesSnapToTheRealTest() {
+        #expect(canonicalTestName("Haemoalobin") == "Haemoglobin")
+        #expect(canonicalTestName("Trialvcendes") == "Triglycerides")
+        #expect(canonicalTestName("HDl Cholestero") == "HDL Cholesterol")
+        #expect(canonicalTestName("Chueose. Fasting") == "Glucose, Fasting")
+        #expect(canonicalTestName("MeV") == "MCV")
+        #expect(canonicalTestName("Vitamin D, co-nydruny") == "Vitamin D, 25-Hydroxy")
+        // Different tests are never merged.
+        #expect(canonicalTestName("LDL Cholesterol") == "LDL Cholesterol")
+        #expect(canonicalTestName("Vitamin B12") == "Vitamin B12")
+        #expect(canonicalTestName("Lipase") == "Lipase")
+        #expect(canonicalTestName("ALP") == "ALP")   // never ALT
+        #expect(canonicalTestName("LDH") == "LDH")
+    }
+}

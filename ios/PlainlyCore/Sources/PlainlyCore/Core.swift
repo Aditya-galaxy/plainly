@@ -171,6 +171,56 @@ public func canonicalUnit(_ u: String) -> String {
     return bestD <= 2 && (bestD == 0 || t.count >= 2) ? best : t
 }
 
+/// Test names labs commonly print. A name misread by OCR ("Haemoalobin", "Trialvcendes") is snapped to the nearest of
+/// these when it is close enough, the same way units are, so explanations and trends use the real name.
+let TEST_NAMES = ["Haemoglobin", "Total Leucocyte Count", "Platelet Count", "MCV", "MCH", "MCHC", "RBC Count", "Haematocrit",
+                  "Glucose, Fasting", "Glucose, Post Prandial", "HbA1c (Glycated Haemoglobin)", "Cholesterol, Total", "LDL Cholesterol",
+                  "HDL Cholesterol", "VLDL Cholesterol", "Triglycerides", "TSH (Thyroid Stimulating Hormone)", "Free T4", "Free T3",
+                  "Vitamin D, 25-Hydroxy", "Vitamin B12", "Creatinine", "Urea", "Uric Acid", "Sodium", "Potassium", "Calcium",
+                  "ALT (SGPT)", "AST (SGOT)", "Alkaline Phosphatase", "Bilirubin, Total", "Albumin", "Ferritin", "Iron", "ESR", "CRP"]
+
+private func letters(_ s: String) -> String { s.lowercased().filter { $0.isLetter || $0.isNumber } }
+
+/// Characters OCR commonly swaps; swapping them costs half an edit.
+private let LOOKALIKE: Set<String> = ["ce", "ag", "ao", "vy", "nr", "li", "l1", "i1", "oq", "gq", "hb", "un", "rn", "il"]
+private func ocrEdits(_ a: String, _ b: String) -> Double {
+    let a = Array(a), b = Array(b)
+    if a.isEmpty { return Double(b.count) }; if b.isEmpty { return Double(a.count) }
+    var prev = (0...b.count).map(Double.init)
+    for i in 1...a.count {
+        var cur = [Double(i)] + Array(repeating: 0, count: b.count)
+        for j in 1...b.count {
+            let x = a[i - 1], y = b[j - 1]
+            let sub = x == y ? 0 : (LOOKALIKE.contains(String([x, y])) || LOOKALIKE.contains(String([y, x]))) ? 0.5 : 1
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + sub)
+        }
+        prev = cur
+    }
+    return prev[b.count]
+}
+
+public func canonicalTestName(_ name: String) -> String {
+    let n = letters(name.split(separator: "(").first.map(String.init) ?? name)
+    if n.count < 3 { return name }
+    var best = name, bestScore = 1.0
+    for c in TEST_NAMES {
+        let short = letters(c.split(separator: "(").first.map(String.init) ?? c)
+        if n == short { return c }
+        let score = ocrEdits(n, short) / Double(max(n.count, short.count))
+        if score < bestScore { best = c; bestScore = score }
+    }
+    // Close enough to be the same word misread, never a different test: short names ("MCV", "ALT") may differ only by
+    // one look-alike character, longer ones by about one character in five.
+    let limit = n.count <= 4 ? 0.17 : 0.22
+    if bestScore <= limit { return best }
+    // "Vitamin D, co-nydruny": a known name's first words, followed by garbled text.
+    for c in TEST_NAMES where c.contains(",") {
+        let head = letters(String(c.split(separator: ",")[0]) + String(c.split(separator: ",")[1].prefix(2)))
+        if n.hasPrefix(letters(String(c.split(separator: ",")[0]))) && n.count >= head.count && c.hasPrefix("Vitamin") { return c }
+    }
+    return name
+}
+
 /// "6,80" → "6.80" (a comma read for a decimal point); "1,200" (thousands) is left alone.
 private let DEC_COMMA = RX("(\\d),(\\d{1,2})(?!\\d)")
 // A lone number (OCR lost the "<" or ">", or read it as ":" or ";") is resolved by the lab's own H/L mark.
@@ -190,7 +240,7 @@ public func parseRows(_ lines: [String]) -> [LabTest] {
         }
         // Sanity: a broken OCR line can look like a row ("ng/dL 0 80-1.80"). A test name is never a unit, and a range's
         // low end is never above its high end; such rows are dropped rather than shown to a patient.
-        let name = m[1].trimmingCharacters(in: .whitespaces)
+        let name = canonicalTestName(m[1].trimmingCharacters(in: .whitespaces))
         if UNITS.contains(canonicalUnit(name)) || name.filter(\.isLetter).count < 2 { return nil }
         if let lo = range.low, let hi = range.high, lo > hi { return nil }
         return (LabTest(name: name, value: value, unit: canonicalUnit(m[4]), range: range, raw: m[2], verified: true), m[3])
