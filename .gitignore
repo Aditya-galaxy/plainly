@@ -18,3 +18,4 @@ ios/*.xcodeproj
 submission/
 ios/PlainlyCore/.build
 ios/PlainlyCore/.swiftpm
+ios/Plainly/Resources/AppCheckDebugToken.txt
